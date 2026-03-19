@@ -3,11 +3,17 @@ package com.pigs.borrowit
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.*
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.pigs.borrowit.screens.LoginScreen
+import com.pigs.borrowit.screens.SignUpScreen
 import androidx.navigation.compose.rememberNavController
 import com.pigs.borrowit.presentation.navigation.AppNavGraph
 import com.pigs.borrowit.presentation.navigation.GraphRoute
@@ -18,35 +24,25 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            BorrowItTheme {
-                /*
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
-                */
-                 BorrowitApp()
-            }
+            LoginSignUpApp()
         }
     }
 }
 
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
+fun LoginSignUpApp() {
+    val navController = rememberNavController()
+
+    NavHost(navController = navController, startDestination = "login") {
+        composable("login") { LoginScreen(navController) }
+        composable("signup") { SignUpScreen(navController) }
+    }
 }
 
 @Preview(showBackground = true)
 @Composable
-fun GreetingPreview() {
-    BorrowItTheme {
-        Greeting("Android")
-    }
+fun PreviewLogin() {
+    LoginSignUpApp()
 }
 
 @Composable
