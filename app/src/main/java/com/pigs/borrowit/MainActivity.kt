@@ -3,28 +3,24 @@ package com.pigs.borrowit
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.runtime.*
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.pigs.borrowit.screens.LoginScreen
-import com.pigs.borrowit.screens.SignUpScreen
-import androidx.navigation.compose.rememberNavController
 import com.pigs.borrowit.presentation.navigation.AppNavGraph
 import com.pigs.borrowit.presentation.navigation.GraphRoute
-import com.pigs.borrowit.ui.theme.BorrowItTheme
+import com.pigs.borrowit.screens.LoginScreen
+import com.pigs.borrowit.screens.SignUpScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            LoginSignUpApp()
+            //LoginSignUpApp()
+            BorrowitApp()
         }
     }
 }
@@ -50,6 +46,6 @@ fun BorrowitApp(){
     val navController = rememberNavController()
     AppNavGraph(
         navController = navController,
-        startDestination = GraphRoute.MAIN
+        startDestination = GraphRoute.AUTH
     )
 }

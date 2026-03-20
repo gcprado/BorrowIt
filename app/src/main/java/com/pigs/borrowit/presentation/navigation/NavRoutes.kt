@@ -43,8 +43,8 @@ sealed class Screen(
         iconFilled = Icons.Filled.Person
     )
 
-    data object Register : Screen(
-        route = "register",
+    data object SignUp : Screen(
+        route = "signup",
         title = "Registro",
         icon = Icons.Outlined.Person,
         iconFilled = Icons.Filled.Person
