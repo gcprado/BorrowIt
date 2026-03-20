@@ -24,6 +24,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.pigs.borrowit.R
+import com.pigs.borrowit.presentation.navigation.Screen
+import com.pigs.borrowit.presentation.navigation.navigateSingleInStack
 
 @Composable
 fun MainBottomNav(
@@ -32,8 +34,10 @@ fun MainBottomNav(
 
     val currentRoute = navController.currentBackStackEntry?.destination?.route
     val currentScreen = when (currentRoute) {
-        //Screen.Home.route -> "Home"
-        //Screen.Profile.route -> "Profile"
+        Screen.Home.route -> "Home"
+        Screen.Profile.route -> "Profile"
+        Screen.Search.route -> "Communities"
+        Screen.Items.route -> "Items"
         else -> ""
     }
 
@@ -66,7 +70,7 @@ fun MainBottomNav(
                 screen = "Home",
                 currentScreen,
                 onClick = {
-                    //TODO: Agregar navegación a pantalla principal
+                    navController.navigateSingleInStack("home")
                 }
                 // onScreenSelected,
             )
@@ -75,16 +79,16 @@ fun MainBottomNav(
                 screen = "Communities",
                 currentScreen,
                 onClick = {
-                    //TODO: Agregar navegación a pantalla de comunidades
+                    navController.navigateSingleInStack("search")
                 }
                 // onScreenSelected,
             )
             BottomNavItem(
                 painterResource(id = R.drawable.add_symbol),
-                screen = currentRoute,
+                screen = "Items",
                 currentScreen,
                 onClick = {
-                    //TODO: Agregar popup para añadir item
+                    navController.navigateSingleInStack("items")
                 }
                 // onScreenSelected,
             )
@@ -93,7 +97,7 @@ fun MainBottomNav(
                 screen = "Profile",
                 currentScreen,
                 onClick = {
-                    //TODO: Agregar navegación a pantalla de perfil
+                    navController.navigateSingleInStack("profile")
                 }
                 // onScreenSelected,
             )

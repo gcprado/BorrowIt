@@ -1,9 +1,11 @@
 package com.pigs.borrowit.presentation.navigation
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Search
@@ -27,6 +29,13 @@ sealed class Screen(
         title = "Buscar",
         icon = Icons.Outlined.Search,
         iconFilled = Icons.Filled.Search
+    )
+
+    data object Items : Screen(
+        route = "items",
+        title = "Inventario",
+        icon = Icons.Outlined.AddCircleOutline,
+        iconFilled = Icons.Filled.AddCircle
     )
 
     data object Profile : Screen(

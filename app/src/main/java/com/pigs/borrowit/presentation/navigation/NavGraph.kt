@@ -1,14 +1,16 @@
 package com.pigs.borrowit.presentation.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.material3.Text
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
-import com.pigs.borrowit.presentation.components.MainBottomNav
+import com.pigs.borrowit.screens.CommsScreen
+import com.pigs.borrowit.screens.HomeScreen
+import com.pigs.borrowit.screens.ItemsScreen
 import com.pigs.borrowit.screens.LoginScreen
+import com.pigs.borrowit.screens.ProfileScreen
 import com.pigs.borrowit.screens.SignUpScreen
 
 
@@ -53,8 +55,16 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         route = GraphRoute.MAIN
     ) {
         composable(Screen.Home.route) {
-            //TODO: Agregar pantalla de inicio
-            MainBottomNav(navController)
+            HomeScreen(navController)
+        }
+        composable(Screen.Search.route) {
+            CommsScreen(navController)
+        }
+        composable(Screen.Items.route) {
+            ItemsScreen(navController)
+        }
+        composable(Screen.Profile.route) {
+            ProfileScreen(navController)
         }
         //TODO: Agregar resto de composables
     }
