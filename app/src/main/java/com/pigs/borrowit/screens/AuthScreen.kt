@@ -1,5 +1,6 @@
 package com.pigs.borrowit.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -22,8 +23,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,6 +43,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.pigs.borrowit.R
 import com.pigs.borrowit.control.AuthMode
 import com.pigs.borrowit.ui.theme.Background
@@ -86,7 +90,7 @@ fun AuthScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
-                
+
                 Image(
                     painter = painterResource(id = R.drawable.borrowitlogo),
                     contentDescription = "BorrowIt Logo",
@@ -97,7 +101,7 @@ fun AuthScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -133,7 +137,7 @@ fun AuthScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                
+
                 if (mode == AuthMode.SIGNUP) {
                     OutlinedTextField(
                         value = username,
@@ -141,47 +145,74 @@ fun AuthScreen(
                         placeholder = { Text("Enter your username") },
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Primary,        // cuando está seleccionado
+                            unfocusedBorderColor = Color.Gray,   // cuando NO está seleccionado
+                            cursorColor = Primary,               // color del cursor
+                            focusedLabelColor = Primary
+                        )
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                
+
                 if (mode == AuthMode.SIGNUP) {
                     OutlinedTextField(
                         value = email,
                         onValueChange = { email = it },
                         placeholder = { Text("Enter a valid email") },
                         singleLine = true,
+                        textStyle = LocalTextStyle.current.copy(
+                            fontSize = 16.sp
+                        ),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Primary,        // cuando está seleccionado
+                            unfocusedBorderColor = Color.Gray,   // cuando NO está seleccionado
+                            cursorColor = Primary,               // color del cursor
+                            focusedLabelColor = Primary
+                        )
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                
+
                 if (mode == AuthMode.LOGIN) {
                     OutlinedTextField(
                         value = username,
                         onValueChange = { username = it },
                         placeholder = { Text("Enter username or email") },
                         singleLine = true,
+                        textStyle = LocalTextStyle.current.copy(
+                            fontSize = 16.sp
+                        ),
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Primary,        // cuando está seleccionado
+                            unfocusedBorderColor = Color.Gray,   // cuando NO está seleccionado
+                            cursorColor = Primary,               // color del cursor
+                            focusedLabelColor = Primary
+                        )
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                
+
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
                     placeholder = { Text("Password") },
                     singleLine = true,
+                    textStyle = LocalTextStyle.current.copy(
+                        fontSize = 16.sp
+                    ),
                     shape = RoundedCornerShape(12.dp),
                     visualTransformation = if (passwordVisible)
                         VisualTransformation.None
@@ -201,18 +232,27 @@ fun AuthScreen(
                             )
                         }
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Primary,        // cuando está seleccionado
+                        unfocusedBorderColor = Color.Gray,   // cuando NO está seleccionado
+                        cursorColor = Primary,               // color del cursor
+                        focusedLabelColor = Primary
+                    )
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                
+
                 if (mode == AuthMode.SIGNUP) {
                     OutlinedTextField(
                         value = confirmPassword,
                         onValueChange = { confirmPassword = it },
                         placeholder = { Text("Please enter your password again") },
                         singleLine = true,
+                        textStyle = LocalTextStyle.current.copy(
+                            fontSize = 16.sp
+                        ),
                         shape = RoundedCornerShape(12.dp),
                         visualTransformation = if (confirmPasswordVisible)
                             VisualTransformation.None
@@ -232,7 +272,13 @@ fun AuthScreen(
                                 )
                             }
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Primary,        // cuando está seleccionado
+                            unfocusedBorderColor = Color.Gray,   // cuando NO está seleccionado
+                            cursorColor = Primary,               // color del cursor
+                            focusedLabelColor = Primary
+                        )
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -240,7 +286,7 @@ fun AuthScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                
+
                 Button(
                     onClick = {
                         onSubmit(username, email, password)
@@ -257,7 +303,7 @@ fun AuthScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
@@ -269,7 +315,7 @@ fun AuthScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                
+
                 OutlinedButton(
                     onClick = { },
                     shape = RoundedCornerShape(15),
@@ -277,7 +323,7 @@ fun AuthScreen(
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = Primary
                     ),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Border)
+                    border = BorderStroke(1.dp, Border)
                 ) {
                     Image(
                         painter = painterResource(id = R.drawable.googlelogo),
