@@ -1,15 +1,14 @@
 package com.pigs.borrowit.presentation.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.material3.Text
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import com.pigs.borrowit.presentation.components.MainBottomNav
-import com.pigs.borrowit.screens.LoginScreen
-import com.pigs.borrowit.screens.SignUpScreen
+import com.pigs.borrowit.screens.components.LoginScreen
+import com.pigs.borrowit.screens.components.SignUpScreen
 
 
 object GraphRoute {

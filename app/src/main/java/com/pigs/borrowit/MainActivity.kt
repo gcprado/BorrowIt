@@ -11,8 +11,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.pigs.borrowit.presentation.navigation.AppNavGraph
 import com.pigs.borrowit.presentation.navigation.GraphRoute
-import com.pigs.borrowit.screens.LoginScreen
-import com.pigs.borrowit.screens.SignUpScreen
+import com.pigs.borrowit.screens.components.LoginScreen
+import com.pigs.borrowit.screens.components.SignUpScreen
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
