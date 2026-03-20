@@ -3,21 +3,23 @@ package com.pigs.borrowit
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.runtime.*
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.pigs.borrowit.screens.LoginScreen
-import com.pigs.borrowit.screens.SignUpScreen
-import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navOptions
+import com.pigs.borrowit.screens.components.LoginScreen
+import com.pigs.borrowit.screens.components.SignUpScreen
 import com.pigs.borrowit.presentation.navigation.AppNavGraph
 import com.pigs.borrowit.presentation.navigation.GraphRoute
-import com.pigs.borrowit.ui.theme.BorrowItTheme
+import com.pigs.borrowit.presentation.navigation.Screen
+import com.pigs.borrowit.screens.ProfileScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
