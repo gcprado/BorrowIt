@@ -8,6 +8,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import com.pigs.borrowit.presentation.components.MainBottomNav
+import com.pigs.borrowit.screens.LoginScreen
+import com.pigs.borrowit.screens.SignUpScreen
 
 
 object GraphRoute {
@@ -36,13 +38,11 @@ fun NavGraphBuilder.authGraph(navController: NavHostController) {
         route = GraphRoute.AUTH
     ) {
         composable(Screen.Login.route) {
-            //TODO: Agregar pantalla de login
-            Text(text = "Pantalla de login")
+            LoginScreen(navController)
         }
 
-        composable(Screen.Register.route) {
-            //TODO: Agregar pantalla de registro
-            Text(text = "Pantalla de registro")
+        composable(Screen.SignUp.route) {
+            SignUpScreen(navController)
         }
     }
 }

@@ -71,6 +71,24 @@ fun MainBottomNav(
                 // onScreenSelected,
             )
             BottomNavItem(
+                painterResource(id = R.drawable.search_icon),
+                screen = "Communities",
+                currentScreen,
+                onClick = {
+                    //TODO: Agregar navegación a pantalla de comunidades
+                }
+                // onScreenSelected,
+            )
+            BottomNavItem(
+                painterResource(id = R.drawable.add_symbol),
+                screen = currentRoute,
+                currentScreen,
+                onClick = {
+                    //TODO: Agregar popup para añadir item
+                }
+                // onScreenSelected,
+            )
+            BottomNavItem(
                 painterResource(id = R.drawable.user_symbol),
                 screen = "Profile",
                 currentScreen,
@@ -89,7 +107,7 @@ fun MainBottomNav(
 @Composable
 fun BottomNavItem(
     painter: Painter,
-    screen: String,
+    screen: String?,
     currentScreen: String,
     onClick: () -> Unit,
 ) {
