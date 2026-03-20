@@ -1,4 +1,4 @@
-package com.pigs.borrowit.presentation.components
+package com.pigs.borrowit.screens.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

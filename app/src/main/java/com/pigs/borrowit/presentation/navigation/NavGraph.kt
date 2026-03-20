@@ -9,9 +9,9 @@ import androidx.navigation.compose.navigation
 import com.pigs.borrowit.screens.CommsScreen
 import com.pigs.borrowit.screens.HomeScreen
 import com.pigs.borrowit.screens.ItemsScreen
-import com.pigs.borrowit.screens.LoginScreen
 import com.pigs.borrowit.screens.ProfileScreen
-import com.pigs.borrowit.screens.SignUpScreen
+import com.pigs.borrowit.screens.components.LoginScreen
+import com.pigs.borrowit.screens.components.SignUpScreen
 
 
 object GraphRoute {

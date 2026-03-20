@@ -9,7 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
-import com.pigs.borrowit.presentation.components.MainBottomNav
+import com.pigs.borrowit.screens.components.MainBottomNav
 
 @Composable
 fun HomeScreen(

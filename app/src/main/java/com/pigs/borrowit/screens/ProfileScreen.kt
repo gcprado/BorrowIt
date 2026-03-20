@@ -18,13 +18,16 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import com.pigs.borrowit.R
+import com.pigs.borrowit.screens.components.MainBottomNav
 import com.pigs.borrowit.ui.theme.Background
 import com.pigs.borrowit.ui.theme.CardBackground
 import com.pigs.borrowit.ui.theme.Primary
 
 @Composable
 fun ProfileScreen(
+    navController: NavController,
     onLogout: () -> Unit = {},
     onDeleteAccount: () -> Unit = {},
     onChangePhoto: () -> Unit = {},
@@ -198,4 +201,5 @@ fun ProfileScreen(
             }
         }
     }
+    MainBottomNav(navController)
 }
