@@ -2,6 +2,7 @@ package com.pigs.borrowit.presentation.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
@@ -35,7 +36,7 @@ sealed class Screen(
         route = "items",
         title = "Inventario",
         icon = Icons.Outlined.AddCircleOutline,
-        iconFilled = Icons.Filled.AddCircle
+        iconFilled = Icons.Filled.AddCircleOutline
     )
 
     data object Profile : Screen(
