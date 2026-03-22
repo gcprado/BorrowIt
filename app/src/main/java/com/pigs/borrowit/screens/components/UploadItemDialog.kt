@@ -1,8 +1,15 @@
 package com.pigs.borrowit.screens.components
 
 import android.app.DatePickerDialog
+import android.content.Context
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -47,11 +54,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,9 +69,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
@@ -85,7 +96,13 @@ fun UploadItemDialog(
     var nameError by remember { mutableStateOf("") }
     var descriptionError by remember { mutableStateOf("") }
     var dateError by remember { mutableStateOf("") }
+    var conditionError by remember { mutableStateOf("") }
+    var imageError by remember { mutableStateOf("") }
     var attemptedSubmit by remember { mutableStateOf(false) }
+    var shouldShake by remember { mutableStateOf(false) }
+    
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -149,15 +166,32 @@ fun UploadItemDialog(
                     
                     ConditionSelector(
                         selectedCondition = selectedCondition,
-                        onConditionSelected = { selectedCondition = it }
+                        onConditionSelected = { 
+                            selectedCondition = it
+                            if (attemptedSubmit) {
+                                conditionError = validateCondition(it)
+                            }
+                        },
+                        errorMessage = conditionError
                     )
                     
                     Spacer(modifier = Modifier.height(20.dp))
                     
                     ImageUploadSection(
                         imageUris = imageUris,
-                        onAddImage = { uri -> imageUris.add(uri) },
-                        onRemoveImage = { index -> imageUris.removeAt(index) }
+                        onAddImage = { uri -> 
+                            imageUris.add(uri)
+                            if (attemptedSubmit) {
+                                imageError = validateImages(imageUris.toList())
+                            }
+                        },
+                        onRemoveImage = { index -> 
+                            imageUris.removeAt(index)
+                            if (attemptedSubmit) {
+                                imageError = validateImages(imageUris.toList())
+                            }
+                        },
+                        errorMessage = imageError
                     )
                     
                     Spacer(modifier = Modifier.height(20.dp))
@@ -167,14 +201,14 @@ fun UploadItemDialog(
                         endDate = endDate,
                         onStartDateSelected = { 
                             startDate = it
-                            if (attemptedSubmit && endDate.isNotEmpty()) {
-                                dateError = validateDateRange(it, endDate)
+                            if (attemptedSubmit) {
+                                dateError = validateDates(it, endDate)
                             }
                         },
                         onEndDateSelected = { 
                             endDate = it
-                            if (attemptedSubmit && startDate.isNotEmpty()) {
-                                dateError = validateDateRange(startDate, it)
+                            if (attemptedSubmit) {
+                                dateError = validateDates(startDate, it)
                             }
                         },
                         errorMessage = dateError
@@ -188,15 +222,25 @@ fun UploadItemDialog(
                         attemptedSubmit = true
                         nameError = validateName(itemName)
                         descriptionError = validateDescription(itemDescription)
-                        dateError = if (startDate.isNotEmpty() && endDate.isNotEmpty()) {
-                            validateDateRange(startDate, endDate)
-                        } else ""
+                        dateError = validateDates(startDate, endDate)
+                        conditionError = validateCondition(selectedCondition)
+                        imageError = validateImages(imageUris.toList())
                         
-                        if (nameError.isEmpty() && descriptionError.isEmpty() && dateError.isEmpty()) {
+                        val hasErrors = listOf(
+                            nameError, descriptionError, dateError, 
+                            conditionError, imageError
+                        ).any { it.isNotEmpty() }
+                        
+                        if (hasErrors) {
+                            shouldShake = true
+                            vibrateDevice(context)
+                        } else {
                             showConfirmation = true
                         }
                     },
-                    modifier = Modifier.padding(24.dp)
+                    modifier = Modifier.padding(24.dp),
+                    shouldShake = shouldShake,
+                    onShakeComplete = { shouldShake = false }
                 )
             }
         }
@@ -342,16 +386,21 @@ fun TextArea(
 @Composable
 fun ConditionSelector(
     selectedCondition: String,
-    onConditionSelected: (String) -> Unit
+    onConditionSelected: (String) -> Unit,
+    errorMessage: String = ""
 ) {
     val conditions = listOf("Nuevo", "Usado", "Excelente estado", "Buen estado", "Estado aceptable")
     
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "Condición",
+            text = "Condición *",
             fontSize = 16.sp,
             fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = if (errorMessage.isNotEmpty()) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
             modifier = Modifier.padding(bottom = 8.dp)
         )
         
@@ -372,6 +421,15 @@ fun ConditionSelector(
                 )
             }
         }
+        
+        if (errorMessage.isNotEmpty()) {
+            Text(
+                text = errorMessage,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(start = 16.dp, top = 8.dp)
+            )
+        }
     }
 }
 
@@ -379,7 +437,8 @@ fun ConditionSelector(
 fun ImageUploadSection(
     imageUris: List<String>,
     onAddImage: (String) -> Unit,
-    onRemoveImage: (Int) -> Unit
+    onRemoveImage: (Int) -> Unit,
+    errorMessage: String = ""
 ) {
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -389,10 +448,14 @@ fun ImageUploadSection(
     
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "Imágenes",
+            text = "Imágenes *",
             fontSize = 16.sp,
             fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = if (errorMessage.isNotEmpty()) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
             modifier = Modifier.padding(bottom = 8.dp)
         )
         
@@ -476,6 +539,15 @@ fun ImageUploadSection(
                 modifier = Modifier.padding(top = 8.dp)
             )
         }
+        
+        if (errorMessage.isNotEmpty()) {
+            Text(
+                text = errorMessage,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(start = 16.dp, top = 8.dp)
+            )
+        }
     }
 }
 
@@ -515,7 +587,7 @@ fun DateRangeSelector(
     
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "Disponibilidad",
+            text = "Disponibilidad *",
             fontSize = 16.sp,
             fontWeight = FontWeight.Medium,
             color = if (errorMessage.isNotEmpty()) {
@@ -614,13 +686,33 @@ fun DateField(
 @Composable
 fun PublishButton(
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    shouldShake: Boolean = false,
+    onShakeComplete: () -> Unit = {}
 ) {
+    val offsetX = remember { Animatable(0f) }
+    
+    LaunchedEffect(shouldShake) {
+        if (shouldShake) {
+            val shakeKeyframes = listOf(0f, -10f, 10f, -10f, 10f, -5f, 5f, 0f)
+            shakeKeyframes.forEach { offset ->
+                offsetX.animateTo(
+                    targetValue = offset,
+                    animationSpec = tween(durationMillis = 50)
+                )
+            }
+            onShakeComplete()
+        }
+    }
+    
     Button(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
-            .height(56.dp),
+            .height(56.dp)
+            .graphicsLayer {
+                translationX = offsetX.value
+            },
         shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primary
@@ -675,20 +767,58 @@ fun validateDescription(description: String): String {
     }
 }
 
-fun validateDateRange(startDate: String, endDate: String): String {
-    if (startDate.isEmpty() || endDate.isEmpty()) return ""
-    
-    return try {
-        val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-        val start = dateFormat.parse(startDate)
-        val end = dateFormat.parse(endDate)
-        
-        if (start != null && end != null && end.before(start)) {
-            "La fecha de fin no puede ser anterior a la fecha de inicio"
-        } else {
-            ""
+fun validateDates(startDate: String, endDate: String): String {
+    return when {
+        startDate.isEmpty() && endDate.isEmpty() -> "Ambas fechas son obligatorias"
+        startDate.isEmpty() -> "La fecha de inicio es obligatoria"
+        endDate.isEmpty() -> "La fecha de fin es obligatoria"
+        else -> {
+            try {
+                val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                val start = dateFormat.parse(startDate)
+                val end = dateFormat.parse(endDate)
+                
+                if (start != null && end != null && end.before(start)) {
+                    "La fecha de fin no puede ser anterior a la fecha de inicio"
+                } else {
+                    ""
+                }
+            } catch (e: Exception) {
+                "Formato de fecha inválido"
+            }
         }
-    } catch (e: Exception) {
-        "Formato de fecha inválido"
+    }
+}
+
+fun validateCondition(condition: String): String {
+    return if (condition.isEmpty()) {
+        "Debe seleccionar la condición del item"
+    } else {
+        ""
+    }
+}
+
+fun validateImages(images: List<String>): String {
+    return if (images.isEmpty()) {
+        "Debe agregar al menos una imagen"
+    } else {
+        ""
+    }
+}
+
+fun vibrateDevice(context: Context) {
+    val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+        vibratorManager.defaultVibrator
+    } else {
+        @Suppress("DEPRECATION")
+        context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+    }
+    
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        vibrator.vibrate(VibrationEffect.createOneShot(200, VibrationEffect.DEFAULT_AMPLITUDE))
+    } else {
+        @Suppress("DEPRECATION")
+        vibrator.vibrate(200)
     }
 }
