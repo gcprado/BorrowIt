@@ -37,169 +37,174 @@ fun ProfileScreen(
 ) {
     var username by remember { mutableStateOf(initialUsername) }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Background),
-        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-
-        Spacer(modifier = Modifier.height(80.dp))
-
-        // 🟡 CARD 1 → PERFIL (Primary)
-        Surface(
-            color = Primary,
-            shape = RoundedCornerShape(24.dp),
-            tonalElevation = 4.dp,
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
+                .fillMaxSize()
+                .background(Background),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
 
-                Box(
-                    modifier = Modifier.size(120.dp),
-                    contentAlignment = Alignment.BottomEnd
+            Spacer(modifier = Modifier.height(80.dp))
+
+            // 🟡 CARD 1 → PERFIL (Primary)
+            Surface(
+                color = Primary,
+                shape = RoundedCornerShape(24.dp),
+                tonalElevation = 4.dp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape),
-                        shape = CircleShape,
-                        color = Color.Transparent,
-                        border = BorderStroke(2.dp, Color.LightGray)
+
+                    Box(
+                        modifier = Modifier.size(120.dp),
+                        contentAlignment = Alignment.BottomEnd
                     ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.profilepicture_default),
-                            contentDescription = "Profile Image",
+                        Surface(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .clip(CircleShape),
-                            contentScale = ContentScale.Crop
+                            shape = CircleShape,
+                            color = Color.Transparent,
+                            border = BorderStroke(2.dp, Color.LightGray)
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.profilepicture_default),
+                                contentDescription = "Profile Image",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+
+                        FloatingActionButton(
+                            onClick = onChangePhoto,
+                            modifier = Modifier.size(36.dp),
+                            containerColor = Color.White,
+                            contentColor = Color.Black
+                        ) {
+                            Icon(Icons.Default.Edit, contentDescription = null)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = email,
+                        fontSize = 14.sp,
+                        color = Color.Black.copy(alpha = 0.7f)
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = username,
+                        onValueChange = { username = it },
+                        placeholder = { Text("Enter your username") },
+                        textStyle = LocalTextStyle.current.copy(
+                            fontSize = 16.sp
+                        ),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            focusedBorderColor = Color.Gray,        // cuando está seleccionado
+                            unfocusedBorderColor = Primary,   // cuando NO está seleccionado
+                            cursorColor = Primary,               // color del cursor
+                            focusedLabelColor = Primary
                         )
-                    }
-
-                    FloatingActionButton(
-                        onClick = onChangePhoto,
-                        modifier = Modifier.size(36.dp),
-                        containerColor = Color.White,
-                        contentColor = Color.Black
-                    ) {
-                        Icon(Icons.Default.Edit, contentDescription = null)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = email,
-                    fontSize = 14.sp,
-                    color = Color.Black.copy(alpha = 0.7f)
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = username,
-                    onValueChange = { username = it },
-                    placeholder = { Text("Enter your username") },
-                    textStyle = LocalTextStyle.current.copy(
-                        fontSize = 16.sp
-                    ),
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
-                        focusedBorderColor = Color.Gray,        // cuando está seleccionado
-                        unfocusedBorderColor = Primary,   // cuando NO está seleccionado
-                        cursorColor = Primary,               // color del cursor
-                        focusedLabelColor = Primary
                     )
-                )
+                }
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        // ⚪ CARD 2 → BOTONES (blanco)
-        Surface(
-            color = CardBackground,
-            shape = RoundedCornerShape(24.dp),
-            tonalElevation = 4.dp,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp)
+            // ⚪ CARD 2 → BOTONES (blanco)
+            Surface(
+                color = CardBackground,
+                shape = RoundedCornerShape(24.dp),
+                tonalElevation = 4.dp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
             ) {
-
-                Button(
-                    onClick = { onSaveChanges(username) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(15),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Primary,
-                        contentColor = Color.Black
-                    )
+                Column(
+                    modifier = Modifier.padding(24.dp)
                 ) {
-                    Text("Save Changes")
-                }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Button(
-                    onClick = onLogout,
-                    shape = RoundedCornerShape(15),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFE5D1B0),
-                        contentColor = Color.Black
-                    )
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
+                    Button(
+                        onClick = { onSaveChanges(username) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(15),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Primary,
+                            contentColor = Color.Black
+                        )
                     ) {
-                        Text("Log Out")
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(Icons.Default.Logout, contentDescription = null)
+                        Text("Save Changes")
                     }
-                }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                Button(
-                    onClick = onDeleteAccount,
-                    shape = RoundedCornerShape(15),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFE19F9F),
-                        contentColor = Color.Black
-                    )
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
+                    Button(
+                        onClick = onLogout,
+                        shape = RoundedCornerShape(15),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFE5D1B0),
+                            contentColor = Color.Black
+                        )
                     ) {
-                        Text("Delete Account")
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(Icons.Default.Delete, contentDescription = null)
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Log Out")
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(Icons.Default.Logout, contentDescription = null)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = onDeleteAccount,
+                        shape = RoundedCornerShape(15),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFE19F9F),
+                            contentColor = Color.Black
+                        )
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Delete Account")
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(Icons.Default.Delete, contentDescription = null)
+                        }
                     }
                 }
             }
         }
+        MainBottomNav(navController)
     }
-    MainBottomNav(navController)
 }
