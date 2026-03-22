@@ -61,8 +61,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import coil.compose.AsyncImage
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -79,6 +81,11 @@ fun UploadItemDialog(
     var startDate by remember { mutableStateOf("") }
     var endDate by remember { mutableStateOf("") }
     var showConfirmation by remember { mutableStateOf(false) }
+    
+    var nameError by remember { mutableStateOf("") }
+    var descriptionError by remember { mutableStateOf("") }
+    var dateError by remember { mutableStateOf("") }
+    var attemptedSubmit by remember { mutableStateOf(false) }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -108,8 +115,16 @@ fun UploadItemDialog(
                     SingleLineTextField(
                         label = "Nombre del item",
                         value = itemName,
-                        onValueChange = { itemName = it },
-                        placeholder = "Nombre del item"
+                        onValueChange = { 
+                            itemName = it
+                            if (attemptedSubmit) {
+                                nameError = validateName(it)
+                            }
+                        },
+                        placeholder = "Nombre del item",
+                        isError = nameError.isNotEmpty(),
+                        errorMessage = nameError,
+                        isRequired = true
                     )
                     
                     Spacer(modifier = Modifier.height(20.dp))
@@ -117,10 +132,17 @@ fun UploadItemDialog(
                     TextArea(
                         label = "Descripción",
                         value = itemDescription,
-                        onValueChange = { itemDescription = it },
+                        onValueChange = { 
+                            itemDescription = it
+                            if (attemptedSubmit) {
+                                descriptionError = validateDescription(it)
+                            }
+                        },
                         placeholder = "Descripción breve del item",
                         minLines = 4,
-                        maxLines = 6
+                        maxLines = 6,
+                        isError = descriptionError.isNotEmpty(),
+                        errorMessage = descriptionError
                     )
                     
                     Spacer(modifier = Modifier.height(20.dp))
@@ -143,15 +165,37 @@ fun UploadItemDialog(
                     DateRangeSelector(
                         startDate = startDate,
                         endDate = endDate,
-                        onStartDateSelected = { startDate = it },
-                        onEndDateSelected = { endDate = it }
+                        onStartDateSelected = { 
+                            startDate = it
+                            if (attemptedSubmit && endDate.isNotEmpty()) {
+                                dateError = validateDateRange(it, endDate)
+                            }
+                        },
+                        onEndDateSelected = { 
+                            endDate = it
+                            if (attemptedSubmit && startDate.isNotEmpty()) {
+                                dateError = validateDateRange(startDate, it)
+                            }
+                        },
+                        errorMessage = dateError
                     )
                     
                     Spacer(modifier = Modifier.height(24.dp))
                 }
                 
                 PublishButton(
-                    onClick = { showConfirmation = true },
+                    onClick = {
+                        attemptedSubmit = true
+                        nameError = validateName(itemName)
+                        descriptionError = validateDescription(itemDescription)
+                        dateError = if (startDate.isNotEmpty() && endDate.isNotEmpty()) {
+                            validateDateRange(startDate, endDate)
+                        } else ""
+                        
+                        if (nameError.isEmpty() && descriptionError.isEmpty() && dateError.isEmpty()) {
+                            showConfirmation = true
+                        }
+                    },
                     modifier = Modifier.padding(24.dp)
                 )
             }
@@ -199,11 +243,13 @@ fun SingleLineTextField(
     onValueChange: (String) -> Unit,
     placeholder: String = "",
     isError: Boolean = false,
+    errorMessage: String = "",
+    isRequired: Boolean = false,
     trailingIcon: @Composable (() -> Unit)? = null
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = label,
+            text = if (isRequired) "$label *" else label,
             fontSize = 16.sp,
             color = if (isError) {
                 MaterialTheme.colorScheme.error
@@ -228,6 +274,14 @@ fun SingleLineTextField(
                 errorBorderColor = MaterialTheme.colorScheme.error
             )
         )
+        if (errorMessage.isNotEmpty()) {
+            Text(
+                text = errorMessage,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+            )
+        }
     }
 }
 
@@ -240,7 +294,7 @@ fun TextArea(
     minLines: Int = 3,
     maxLines: Int = 5,
     isError: Boolean = false,
-    supportingText: String = "",
+    errorMessage: String = "",
     enabled: Boolean = true
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -267,15 +321,20 @@ fun TextArea(
             singleLine = false,
             isError = isError,
             enabled = enabled,
-            supportingText = if (supportingText.isNotEmpty()) {
-                { Text(supportingText) }
-            } else null,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
                 unfocusedBorderColor = MaterialTheme.colorScheme.outline,
                 errorBorderColor = MaterialTheme.colorScheme.error
             )
         )
+        if (errorMessage.isNotEmpty()) {
+            Text(
+                text = errorMessage,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+            )
+        }
     }
 }
 
@@ -373,31 +432,36 @@ fun ImageUploadSection(
                 }
             }
             
-            imageUris.take(2).forEachIndexed { index, _ ->
+            imageUris.take(2).forEachIndexed { index, uri ->
                 Box(
                     modifier = Modifier
                         .size(100.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Image,
+                    AsyncImage(
+                        model = uri,
                         contentDescription = "Imagen ${index + 1}",
                         modifier = Modifier
-                            .size(48.dp)
-                            .align(Alignment.Center),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Crop
                     )
                     IconButton(
                         onClick = { onRemoveImage(index) },
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .size(24.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                                shape = RoundedCornerShape(12.dp)
+                            )
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Eliminar",
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.error
                         )
                     }
                 }
@@ -420,7 +484,8 @@ fun DateRangeSelector(
     startDate: String,
     endDate: String,
     onStartDateSelected: (String) -> Unit,
-    onEndDateSelected: (String) -> Unit
+    onEndDateSelected: (String) -> Unit,
+    errorMessage: String = ""
 ) {
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
@@ -453,7 +518,11 @@ fun DateRangeSelector(
             text = "Disponibilidad",
             fontSize = 16.sp,
             fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = if (errorMessage.isNotEmpty()) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
             modifier = Modifier.padding(bottom = 8.dp)
         )
         
@@ -465,14 +534,25 @@ fun DateRangeSelector(
                 label = "Fecha inicio",
                 value = startDate,
                 onClick = { startDatePickerDialog.show() },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                isError = errorMessage.isNotEmpty()
             )
             
             DateField(
                 label = "Fecha fin",
                 value = endDate,
                 onClick = { endDatePickerDialog.show() },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                isError = errorMessage.isNotEmpty()
+            )
+        }
+        
+        if (errorMessage.isNotEmpty()) {
+            Text(
+                text = errorMessage,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(start = 16.dp, top = 4.dp)
             )
         }
     }
@@ -483,13 +563,18 @@ fun DateField(
     label: String,
     value: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isError: Boolean = false
 ) {
     Column(modifier = modifier) {
         Text(
             text = label,
             fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (isError) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
             modifier = Modifier.padding(bottom = 4.dp)
         )
         
@@ -500,12 +585,18 @@ fun DateField(
             colors = ButtonDefaults.outlinedButtonColors(
                 containerColor = Color.Transparent
             ),
+            border = if (isError) {
+                BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+            } else {
+                ButtonDefaults.outlinedButtonBorder
+            },
             contentPadding = PaddingValues(12.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.CalendarToday,
                 contentDescription = null,
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(18.dp),
+                tint = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
@@ -566,4 +657,38 @@ fun ConfirmationDialog(
         },
         shape = RoundedCornerShape(16.dp)
     )
+}
+
+fun validateName(name: String): String {
+    return when {
+        name.isEmpty() -> "El nombre es obligatorio"
+        name.length < 4 -> "El nombre debe tener al menos 4 caracteres"
+        name.length > 80 -> "El nombre no puede exceder los 80 caracteres"
+        else -> ""
+    }
+}
+
+fun validateDescription(description: String): String {
+    return when {
+        description.length > 200 -> "La descripción no puede exceder los 200 caracteres"
+        else -> ""
+    }
+}
+
+fun validateDateRange(startDate: String, endDate: String): String {
+    if (startDate.isEmpty() || endDate.isEmpty()) return ""
+    
+    return try {
+        val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+        val start = dateFormat.parse(startDate)
+        val end = dateFormat.parse(endDate)
+        
+        if (start != null && end != null && end.before(start)) {
+            "La fecha de fin no puede ser anterior a la fecha de inicio"
+        } else {
+            ""
+        }
+    } catch (e: Exception) {
+        "Formato de fecha inválido"
+    }
 }
