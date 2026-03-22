@@ -57,7 +57,8 @@ import com.pigs.borrowit.ui.theme.TextSecondary
 fun AuthScreen(
     mode: AuthMode,
     onSwitchMode: () -> Unit,
-    onSubmit: (username: String, email: String, password: String) -> Unit
+    onSubmit: (username: String, email: String, password: String) -> Unit,
+    errorMessage: String?
 ) {
     var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
