@@ -49,6 +49,6 @@ fun BorrowitApp(){
     val navController = rememberNavController()
     AppNavGraph(
         navController = navController,
-        startDestination = GraphRoute.MAIN
+        startDestination = GraphRoute.AUTH
     )
 }
