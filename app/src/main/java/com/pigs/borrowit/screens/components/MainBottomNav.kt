@@ -1,12 +1,9 @@
 package com.pigs.borrowit.screens.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -30,8 +27,8 @@ import com.pigs.borrowit.presentation.navigation.navigateSingleInStack
 @Composable
 fun MainBottomNav(
     navController: NavController,
+    modifier: Modifier = Modifier  // ← Añadido para permitir personalización desde fuera
 ) {
-
     val currentRoute = navController.currentBackStackEntry?.destination?.route
     val currentScreen = when (currentRoute) {
         Screen.Home.route -> "Home"
@@ -41,71 +38,58 @@ fun MainBottomNav(
         else -> ""
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Transparent)
-    )   {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .windowInsetsPadding(WindowInsets.systemBars)
-                .padding(bottom = 10.dp)
-                .background(Color.Transparent)
-                .drawBehind {
-                    val offsetY = -10.dp.toPx()
-                    drawLine(
-                        color = Color.Black,
-                        start = Offset(0f, offsetY),
-                        end = Offset(size.width, offsetY),
-                        strokeWidth = 0.5.dp.toPx()
-                    )
-                },
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            BottomNavItem(
-                painterResource(id = R.drawable.home_symbol),
-                screen = "Home",
-                currentScreen,
-                onClick = {
-                    navController.navigateSingleInStack("home")
-                }
-                // onScreenSelected,
-            )
-            BottomNavItem(
-                painterResource(id = R.drawable.community_symbol),
-                screen = "Communities",
-                currentScreen,
-                onClick = {
-                    navController.navigateSingleInStack("search")
-                }
-                // onScreenSelected,
-            )
-            BottomNavItem(
-                painterResource(id = R.drawable.add_symbol),
-                screen = "Items",
-                currentScreen,
-                onClick = {
-                    navController.navigateSingleInStack("items")
-                }
-                // onScreenSelected,
-            )
-            BottomNavItem(
-                painterResource(id = R.drawable.user_symbol),
-                screen = "Profile",
-                currentScreen,
-                onClick = {
-                    navController.navigateSingleInStack("profile")
-                }
-                // onScreenSelected,
-            )
-
-
-        }
+    // Eliminado el Box innecesario
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(WindowInsets.systemBars)
+            .padding(top = 20.dp)
+            /*
+            .drawBehind {
+                // Línea en la parte superior del navbar
+                drawLine(
+                    color = Color.Gray,
+                    start = Offset(0f, 0f),
+                    end = Offset(size.width, 0f),
+                    strokeWidth = 0.5.dp.toPx()
+                )
+            }*/,
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        BottomNavItem(
+            painterResource(id = R.drawable.home_symbol),
+            screen = "Home",
+            currentScreen,
+            onClick = {
+                navController.navigateSingleInStack("home")
+            }
+        )
+        BottomNavItem(
+            painterResource(id = R.drawable.community_symbol),
+            screen = "Communities",
+            currentScreen,
+            onClick = {
+                navController.navigateSingleInStack("search")
+            }
+        )
+        BottomNavItem(
+            painterResource(id = R.drawable.add_symbol),
+            screen = "Items",
+            currentScreen,
+            onClick = {
+                navController.navigateSingleInStack("items")
+            }
+        )
+        BottomNavItem(
+            painterResource(id = R.drawable.user_symbol),
+            screen = "Profile",
+            currentScreen,
+            onClick = {
+                navController.navigateSingleInStack("profile")
+            }
+        )
     }
-
 }
 
 @Composable
@@ -117,7 +101,6 @@ fun BottomNavItem(
 ) {
     val isSelected = screen == currentScreen
     val color = if (isSelected) Color.Black else Color.Gray
-    //val colorFilter = if (isSelected) ColorFilter.tint(Color.Black) else ColorFilter.tint(Color.Gray)
 
     Icon(
         painter = painter,

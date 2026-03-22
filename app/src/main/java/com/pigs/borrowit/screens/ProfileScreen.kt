@@ -205,6 +205,6 @@ fun ProfileScreen(
                 }
             }
         }
-        MainBottomNav(navController)
+        MainBottomNav(navController, modifier = Modifier.align(Alignment.BottomCenter))
     }
 }

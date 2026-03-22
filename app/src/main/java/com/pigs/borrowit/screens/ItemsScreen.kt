@@ -1,6 +1,7 @@
 package com.pigs.borrowit.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Button
@@ -24,34 +25,37 @@ fun ItemsScreen(
 
     var showAddItem by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = "Pantalla de Items",
-            style = MaterialTheme.typography.headlineMedium
-        )
-        Text(
-            text = "Esta es la pantalla para los items",
-            style = MaterialTheme.typography.bodyLarge
-        )
-        Button(
-            onClick = {
-                showAddItem = true
-            }
-        ) {
-            Text(text = "Añadir nuevo objeto")
-        }
+    Box(modifier = Modifier.fillMaxSize()) {
 
-        if (showAddItem) {
-            UploadItemDialog(
-                onDismiss = {
-                    showAddItem = false
-                }
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "Pantalla de Items",
+                style = MaterialTheme.typography.headlineMedium
             )
+            Text(
+                text = "Esta es la pantalla para los items",
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Button(
+                onClick = {
+                    showAddItem = true
+                }
+            ) {
+                Text(text = "Añadir nuevo objeto")
+            }
+
+            if (showAddItem) {
+                UploadItemDialog(
+                    onDismiss = {
+                        showAddItem = false
+                    }
+                )
+            }
         }
+        MainBottomNav(navController, modifier = Modifier.align(Alignment.BottomCenter))
     }
-    MainBottomNav(navController)
 }

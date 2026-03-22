@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -97,7 +99,7 @@ fun HomeScreen(
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(
@@ -105,43 +107,51 @@ fun HomeScreen(
                     start = 16.dp,
                     end = 16.dp,
                     bottom = 80.dp
-                ),
-            horizontalAlignment = Alignment.CenterHorizontally
+                )
         ) {
             // Header con perfil y saludo
-            ProfileHeader()
+            item {
+                ProfileHeader()
+            }
 
             // Sección de recomendaciones
-            SectionHeader(
-                title = "Recommended for you",
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp)
-            )
+            item {
+                SectionHeader(
+                    title = "Recommended for you",
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp)
+                )
+            }
 
             // Lista de objetos recomendados
-            recommendedItems.forEach { item ->
+            items(recommendedItems) { item ->
                 RecommendedItemCard(item = item)
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
             // Sección de anuncios patrocinados
-            SectionHeader(
-                title = "Sponsored",
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
-                fontSize = 14,
-                fontWeight = FontWeight.Medium,
-                color = Color.Gray
-            )
+            item {
+                SectionHeader(
+                    title = "Sponsored",
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+                    fontSize = 14,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Gray
+                )
+            }
 
             // Lista de anuncios
-            sponsoredAds.forEach { ad ->
+            items(sponsoredAds) { ad ->
                 SponsoredAdCard(ad = ad)
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            // Espacio final para mejor experiencia de scroll
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+            }
         }
 
-        MainBottomNav(navController)
+        MainBottomNav(navController, modifier = Modifier.align(Alignment.BottomCenter))
     }
 }
 
