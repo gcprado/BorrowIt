@@ -1,70 +1,233 @@
 package com.pigs.borrowit.screens.components
 
+import android.app.DatePickerDialog
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UploadItemDialog(
     onDismiss: () -> Unit
 ) {
-
     var itemName by remember { mutableStateOf("") }
     var itemDescription by remember { mutableStateOf("") }
+    var selectedCondition by remember { mutableStateOf("") }
+    val imageUris = remember { mutableStateListOf<String>() }
+    var startDate by remember { mutableStateOf("") }
+    var endDate by remember { mutableStateOf("") }
+    var showConfirmation by remember { mutableStateOf(false) }
 
     Dialog(
-        onDismissRequest = onDismiss
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-
         Surface(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            shape = RoundedCornerShape(12.dp),
+                .fillMaxWidth(0.95f)
+                .fillMaxSize(0.9f),
+            shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .statusBarsPadding()
-                    .background(Color.White)
-
             ) {
-                SingleLineTextField(
-                    label = "Nombre del objeto",
-                    value = itemName,
-                    onValueChange = { itemName = it },
-                    placeholder = "Secador de pelo de mano con mango de plástico...",
-                )
-                TextArea(
-                    label = "Descripción del objeto",
-                    value = itemDescription,
-                    onValueChange = { itemDescription = it },
-                    placeholder = "Secador de pelo de mano con mango de plástico...",
-                    minLines = 4,
-                    maxLines = 8
+                DialogHeader(onDismiss = onDismiss)
+                
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 24.dp)
+                ) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    SingleLineTextField(
+                        label = "Nombre del item",
+                        value = itemName,
+                        onValueChange = { itemName = it },
+                        placeholder = "Nombre del item"
+                    )
+                    
+                    Spacer(modifier = Modifier.height(20.dp))
+                    
+                    TextArea(
+                        label = "Descripción",
+                        value = itemDescription,
+                        onValueChange = { itemDescription = it },
+                        placeholder = "Descripción breve del item",
+                        minLines = 4,
+                        maxLines = 6
+                    )
+                    
+                    Spacer(modifier = Modifier.height(20.dp))
+                    
+                    ConditionSelector(
+                        selectedCondition = selectedCondition,
+                        onConditionSelected = { selectedCondition = it }
+                    )
+                    
+                    Spacer(modifier = Modifier.height(20.dp))
+                    
+                    ImageUploadSection(
+                        imageUris = imageUris,
+                        onAddImage = { uri -> imageUris.add(uri) },
+                        onRemoveImage = { index -> imageUris.removeAt(index) }
+                    )
+                    
+                    Spacer(modifier = Modifier.height(20.dp))
+                    
+                    DateRangeSelector(
+                        startDate = startDate,
+                        endDate = endDate,
+                        onStartDateSelected = { startDate = it },
+                        onEndDateSelected = { endDate = it }
+                    )
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+                
+                PublishButton(
+                    onClick = { showConfirmation = true },
+                    modifier = Modifier.padding(24.dp)
                 )
             }
         }
+        
+        if (showConfirmation) {
+            ConfirmationDialog(
+                onConfirm = {
+                    showConfirmation = false
+                    onDismiss()
+                },
+                onDismiss = { showConfirmation = false }
+            )
+        }
+    }
+}
+
+@Composable
+fun DialogHeader(onDismiss: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "Añadir nuevo objeto",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
+        IconButton(onClick = onDismiss) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Cerrar"
+            )
+        }
+    }
+}
+
+@Composable
+fun SingleLineTextField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String = "",
+    isError: Boolean = false,
+    trailingIcon: @Composable (() -> Unit)? = null
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = label,
+            fontSize = 16.sp,
+            color = if (isError) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
+        OutlinedTextField(
+            value = value,
+            onValueChange = { newValue -> onValueChange(newValue) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            placeholder = if (placeholder.isNotEmpty()) {
+                { Text(placeholder) }
+            } else null,
+            isError = isError,
+            trailingIcon = trailingIcon,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                errorBorderColor = MaterialTheme.colorScheme.error
+            )
+        )
     }
 }
 
@@ -116,41 +279,291 @@ fun TextArea(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun SingleLineTextField(
-    label: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    placeholder: String = "",
-    isError: Boolean = false,
-    trailingIcon: @Composable (() -> Unit)? = null
+fun ConditionSelector(
+    selectedCondition: String,
+    onConditionSelected: (String) -> Unit
 ) {
+    val conditions = listOf("Nuevo", "Usado", "Excelente estado", "Buen estado", "Estado aceptable")
+    
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = label,
+            text = "Condición",
             fontSize = 16.sp,
-            color = if (isError) {
-                MaterialTheme.colorScheme.error
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            },
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            conditions.forEach { condition ->
+                FilterChip(
+                    selected = selectedCondition == condition,
+                    onClick = { onConditionSelected(condition) },
+                    label = { Text(condition) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ImageUploadSection(
+    imageUris: List<String>,
+    onAddImage: (String) -> Unit,
+    onRemoveImage: (Int) -> Unit
+) {
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let { onAddImage(it.toString()) }
+    }
+    
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "Imágenes",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(100.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(
+                        width = 2.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .clickable { launcher.launch("image/*") },
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Agregar foto",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Agregar\nfotos",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+            
+            imageUris.take(2).forEachIndexed { index, _ ->
+                Box(
+                    modifier = Modifier
+                        .size(100.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Image,
+                        contentDescription = "Imagen ${index + 1}",
+                        modifier = Modifier
+                            .size(48.dp)
+                            .align(Alignment.Center),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    IconButton(
+                        onClick = { onRemoveImage(index) },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Eliminar",
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+        }
+        
+        if (imageUris.isNotEmpty()) {
+            Text(
+                text = "${imageUris.size} imagen${if (imageUris.size > 1) "es" else ""} seleccionada${if (imageUris.size > 1) "s" else ""}",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun DateRangeSelector(
+    startDate: String,
+    endDate: String,
+    onStartDateSelected: (String) -> Unit,
+    onEndDateSelected: (String) -> Unit
+) {
+    val context = LocalContext.current
+    val calendar = Calendar.getInstance()
+    val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    
+    val startDatePickerDialog = DatePickerDialog(
+        context,
+        { _, year, month, dayOfMonth ->
+            calendar.set(year, month, dayOfMonth)
+            onStartDateSelected(dateFormat.format(calendar.time))
+        },
+        calendar.get(Calendar.YEAR),
+        calendar.get(Calendar.MONTH),
+        calendar.get(Calendar.DAY_OF_MONTH)
+    )
+    
+    val endDatePickerDialog = DatePickerDialog(
+        context,
+        { _, year, month, dayOfMonth ->
+            calendar.set(year, month, dayOfMonth)
+            onEndDateSelected(dateFormat.format(calendar.time))
+        },
+        calendar.get(Calendar.YEAR),
+        calendar.get(Calendar.MONTH),
+        calendar.get(Calendar.DAY_OF_MONTH)
+    )
+    
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "Disponibilidad",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            DateField(
+                label = "Fecha inicio",
+                value = startDate,
+                onClick = { startDatePickerDialog.show() },
+                modifier = Modifier.weight(1f)
+            )
+            
+            DateField(
+                label = "Fecha fin",
+                value = endDate,
+                onClick = { endDatePickerDialog.show() },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+fun DateField(
+    label: String,
+    value: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 4.dp)
         )
-        OutlinedTextField(
-            value = value,
-            onValueChange = { newValue -> onValueChange(newValue) },
+        
+        OutlinedButton(
+            onClick = onClick,
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            placeholder = if (placeholder.isNotEmpty()) {
-                { Text(placeholder) }
-            } else null,
-            isError = isError,
-            trailingIcon = trailingIcon,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                errorBorderColor = MaterialTheme.colorScheme.error
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = Color.Transparent
+            ),
+            contentPadding = PaddingValues(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.CalendarToday,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
             )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = value.ifEmpty { "Seleccionar" },
+                fontSize = 14.sp,
+                color = if (value.isEmpty()) 
+                    MaterialTheme.colorScheme.onSurfaceVariant 
+                else 
+                    MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+@Composable
+fun PublishButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(56.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary
+        )
+    ) {
+        Text(
+            text = "Publicar",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold
         )
     }
+}
+
+@Composable
+fun ConfirmationDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "¡Publicación exitosa!",
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Text("Tu objeto ha sido publicado correctamente.")
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Aceptar")
+            }
+        },
+        shape = RoundedCornerShape(16.dp)
+    )
 }
