@@ -59,7 +59,7 @@ fun MainBottomNav(
                         color = Color.Black,
                         start = Offset(0f, offsetY),
                         end = Offset(size.width, offsetY),
-                        strokeWidth = 2.dp.toPx()
+                        strokeWidth = 0.5.dp.toPx()
                     )
                 },
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -75,7 +75,7 @@ fun MainBottomNav(
                 // onScreenSelected,
             )
             BottomNavItem(
-                painterResource(id = R.drawable.search_icon),
+                painterResource(id = R.drawable.community_symbol),
                 screen = "Communities",
                 currentScreen,
                 onClick = {
