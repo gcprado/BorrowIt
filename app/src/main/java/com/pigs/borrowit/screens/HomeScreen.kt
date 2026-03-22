@@ -3,6 +3,7 @@ package com.pigs.borrowit.screens
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -144,7 +146,9 @@ fun HomeScreen(
 }
 
 @Composable
-fun ProfileHeader() {
+fun ProfileHeader(
+    onNotificationClick: () -> Unit = {}
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -158,31 +162,54 @@ fun ProfileHeader() {
                     strokeWidth = 0.5.dp.toPx()
                 )
             },
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Image(
-            painter = painterResource(id = R.drawable.profilepicture_default),
-            contentDescription = "Profile Image",
-            modifier = Modifier
-                .size(50.dp)
-                .clip(CircleShape)
-                .border(2.dp, Color.LightGray, CircleShape),
-            contentScale = ContentScale.Crop
-        )
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Column {
-            Text(
-                text = "Welcome back,",
-                fontSize = 14.sp,
-                color = Color.Gray
+        // Parte izquierda: imagen de perfil y texto
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.profilepicture_default),
+                contentDescription = "Profile Image",
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(CircleShape)
+                    .border(2.dp, Color.LightGray, CircleShape),
+                contentScale = ContentScale.Crop
             )
-            Text(
-                text = "John Doe",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column {
+                Text(
+                    text = "Welcome back,",
+                    fontSize = 14.sp,
+                    color = Color.Gray
+                )
+                Text(
+                    text = "John Doe",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+            }
+        }
+
+        // Parte derecha: ícono de notificación
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Color.Transparent)
+                .clickable { onNotificationClick() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.notification_symbol),
+                contentDescription = "Notifications",
+                modifier = Modifier.size(24.dp),
+                tint = Color.Unspecified
             )
         }
     }
