@@ -3,9 +3,12 @@ package com.pigs.borrowit.presentation.navigation
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
+import androidx.navigation.navArgument
+import com.pigs.borrowit.screens.CommScreen
 import com.pigs.borrowit.screens.CommsScreen
 import com.pigs.borrowit.screens.HomeScreen
 import com.pigs.borrowit.screens.ItemsScreen
@@ -66,6 +69,20 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         composable(Screen.Profile.route) {
             ProfileScreen(navController)
         }
-        //TODO: Agregar resto de composables
+        composable(
+            route = Screen.CommunityDetail.route,
+            arguments = listOf(
+                navArgument("name") { type = NavType.StringType },
+                navArgument("description") { type = NavType.StringType },
+                navArgument("bannerUrl") { type = NavType.StringType },
+                navArgument("profileUrl") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val name = backStackEntry.arguments?.getString("name") ?: ""
+            val description = backStackEntry.arguments?.getString("description") ?: ""
+            val bannerUrl = backStackEntry.arguments?.getString("bannerUrl")
+            val profileUrl = backStackEntry.arguments?.getString("profileUrl")
+            CommScreen(navController, name, description, bannerUrl, profileUrl)
+        }
     }
 }

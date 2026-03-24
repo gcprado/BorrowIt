@@ -60,6 +60,13 @@ sealed class Screen(
         iconFilled = Icons.Filled.Person
     )
 
+    data object CommunityDetail : Screen(
+        route = "communityDetail/{name}/{description}/{bannerUrl}/{profileUrl}",
+        title = "Comunidad",
+        icon = Icons.Outlined.Person,
+        iconFilled = Icons.Filled.Person
+    )
+
     companion object {
         val items = listOf(Home, Search, Profile)
     }
