@@ -9,6 +9,7 @@ import androidx.navigation.compose.navigation
 import com.pigs.borrowit.screens.CommsScreen
 import com.pigs.borrowit.screens.HomeScreen
 import com.pigs.borrowit.screens.ItemsScreen
+import com.pigs.borrowit.screens.ManageItemsScreen
 import com.pigs.borrowit.screens.ProfileScreen
 import com.pigs.borrowit.screens.components.LoginScreen
 import com.pigs.borrowit.screens.components.SignUpScreen
@@ -66,6 +67,8 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         composable(Screen.Profile.route) {
             ProfileScreen(navController)
         }
-        //TODO: Agregar resto de composables
+        composable(Screen.ManageItems.route) {
+            ManageItemsScreen(navController)
+        }
     }
 }

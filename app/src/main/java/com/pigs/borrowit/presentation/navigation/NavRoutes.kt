@@ -60,6 +60,13 @@ sealed class Screen(
         iconFilled = Icons.Filled.Person
     )
 
+    data object ManageItems : Screen(
+        route = "manage_items",
+        title = "Gestionar Items",
+        icon = Icons.Outlined.Person,
+        iconFilled = Icons.Filled.Person
+    )
+
     companion object {
         val items = listOf(Home, Search, Profile)
     }
