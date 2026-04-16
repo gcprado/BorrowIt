@@ -97,7 +97,7 @@ fun AuthScreen(
                     contentDescription = "BorrowIt Logo",
                     modifier = Modifier
                         .size(120.dp)
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(12.dp))
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -106,13 +106,13 @@ fun AuthScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(15))
+                        .clip(RoundedCornerShape(12.dp))
                         .background(PrimaryLight)
                 ) {
                     Button(
                         onClick = { if (mode != AuthMode.LOGIN) onSwitchMode() },
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(15),
+                        shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (mode == AuthMode.LOGIN) Primary else PrimaryLight,
                             contentColor = if (mode == AuthMode.LOGIN) Color.Black else TextSecondary
@@ -125,7 +125,7 @@ fun AuthScreen(
                     Button(
                         onClick = { if (mode != AuthMode.SIGNUP) onSwitchMode() },
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(15),
+                        shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (mode == AuthMode.SIGNUP) Primary else PrimaryLight,
                             contentColor = if (mode == AuthMode.SIGNUP) Color.Black else TextSecondary
@@ -292,7 +292,7 @@ fun AuthScreen(
                     onClick = {
                         onSubmit(username, email, password)
                     },
-                    shape = RoundedCornerShape(15),
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.width(200.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Primary,
@@ -319,7 +319,7 @@ fun AuthScreen(
 
                 OutlinedButton(
                     onClick = { },
-                    shape = RoundedCornerShape(15),
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.width(200.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = Primary

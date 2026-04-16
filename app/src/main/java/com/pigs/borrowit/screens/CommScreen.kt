@@ -24,6 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.pigs.borrowit.ui.theme.Primary
+import com.pigs.borrowit.ui.theme.PrimaryLight
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -197,7 +199,7 @@ fun CommScreen(
                             OutlinedButton(
                                 onClick = { /* Share logic */ },
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(8.dp),
+                                shape = RoundedCornerShape(12.dp),
                                 border = BorderStroke(1.dp, Color.LightGray)
                             ) {
                                 Text("Share Community", color = Color.Gray)
@@ -261,7 +263,7 @@ fun ItemCard(item: CommunityItem, onClick: () -> Unit) {
                 contentDescription = null,
                 modifier = Modifier
                     .size(80.dp)
-                    .clip(RoundedCornerShape(8.dp)),
+                    .clip(RoundedCornerShape(12.dp)),
                 contentScale = ContentScale.Crop
             )
             
@@ -296,7 +298,7 @@ fun ItemCard(item: CommunityItem, onClick: () -> Unit) {
                     Text(
                         text = "By ${item.author}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF1976D2)
+                        color = Primary
                     )
                 }
             }
@@ -388,15 +390,15 @@ fun ItemDetailDialog(item: CommunityItem, onDismiss: () -> Unit) {
                     Text(
                         text = "Published by ${item.author}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF1976D2)
+                        color = Primary
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Condition Chip
                     Surface(
-                        color = Color(0xFFE3F2FD),
-                        shape = RoundedCornerShape(16.dp)
+                        color = PrimaryLight,
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -406,13 +408,13 @@ fun ItemDetailDialog(item: CommunityItem, onDismiss: () -> Unit) {
                                 Icons.Default.Info, 
                                 contentDescription = null, 
                                 modifier = Modifier.size(16.dp),
-                                tint = Color(0xFF1976D2)
+                                tint = com.pigs.borrowit.ui.theme.PrimaryDark
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = item.condition,
                                 style = MaterialTheme.typography.labelMedium,
-                                color = Color(0xFF1976D2),
+                                color = com.pigs.borrowit.ui.theme.PrimaryDark,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -466,7 +468,7 @@ fun ItemDetailDialog(item: CommunityItem, onDismiss: () -> Unit) {
                         .fillMaxWidth()
                         .height(56.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1976D2))
+                    colors = ButtonDefaults.buttonColors(containerColor = com.pigs.borrowit.ui.theme.ActionGreen, contentColor = androidx.compose.ui.graphics.Color.White)
                 ) {
                     Text("Request Item", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }

@@ -148,7 +148,7 @@ fun ProfileScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
-                        shape = RoundedCornerShape(15),
+                        shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Primary,
                             contentColor = Color.Black
@@ -161,7 +161,7 @@ fun ProfileScreen(
 
                     Button(
                         onClick = onLogout,
-                        shape = RoundedCornerShape(15),
+                        shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
@@ -184,7 +184,7 @@ fun ProfileScreen(
 
                     Button(
                         onClick = onDeleteAccount,
-                        shape = RoundedCornerShape(15),
+                        shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),

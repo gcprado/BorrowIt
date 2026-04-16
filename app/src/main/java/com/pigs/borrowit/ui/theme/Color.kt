@@ -13,8 +13,10 @@ val Pink40 = Color(0xFF7D5260)
 val Background = Color(0xFFF7F8FA)
 val CardBackground = Color(0xFFFFFFFF)
 
-val Primary = Color(0xFF9CC7D8)
-val PrimaryLight = Color(0xFFE3F2F7)
+val Primary = Color(0xFF81C784) // Verde más claro y fresco
+val PrimaryLight = Color(0xFFE8F5E9) // Verde muy claro y suave
+val PrimaryDark = Color(0xFF2E7D32) // Verde oscuro para textos nítidos
+val ActionGreen = Color(0xFF4CAF50) // Verde normal básico para llamadas a la acción
 
 val Border = Color(0xFFE5E7EB)
 val TextSecondary = Color(0xFF767676)

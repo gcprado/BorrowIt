@@ -38,6 +38,9 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.pigs.borrowit.R
 import com.pigs.borrowit.screens.components.MainBottomNav
+import com.pigs.borrowit.ui.theme.Background
+import com.pigs.borrowit.ui.theme.CardBackground
+import com.pigs.borrowit.ui.theme.Primary
 
 // Data class para objetos recomendados
 data class RecommendedItem(
@@ -98,7 +101,7 @@ fun HomeScreen(
         )
     )
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().background(Background)) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -252,8 +255,8 @@ fun RecommendedItemCard(
             .fillMaxWidth()
             .padding(start = 16.dp, end = 16.dp),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
@@ -268,14 +271,14 @@ fun RecommendedItemCard(
                     contentDescription = item.name,
                     modifier = Modifier
                         .size(70.dp)
-                        .clip(RoundedCornerShape(8.dp)),
+                        .clip(RoundedCornerShape(12.dp)),
                     contentScale = ContentScale.Crop
                 )
             } else {
                 Box(
                     modifier = Modifier
                         .size(70.dp)
-                        .background(Color(0xFFE0E0E0), RoundedCornerShape(8.dp)),
+                        .background(Color(0xFFE0E0E0), RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -313,9 +316,9 @@ fun RecommendedItemCard(
             // Botón de acción
             Box(
                 modifier = Modifier
-                    .background(Color(0xFF2196F3), RoundedCornerShape(8.dp))
+                    .background(Primary, RoundedCornerShape(12.dp))
                     .padding(horizontal = 12.dp, vertical = 8.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(12.dp))
             ) {
                 Text(
                     text = "Borrow",
@@ -338,8 +341,8 @@ fun SponsoredAdCard(
             .fillMaxWidth()
             .padding(start = 16.dp, end = 16.dp),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxWidth()
@@ -386,9 +389,9 @@ fun SponsoredAdCard(
                 // Botón CTA
                 Box(
                     modifier = Modifier
-                        .background(ad.ctaColor, RoundedCornerShape(8.dp))
+                        .background(ad.ctaColor, RoundedCornerShape(12.dp))
                         .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(12.dp))
                 ) {
                     Text(
                         text = ad.ctaText,
@@ -402,7 +405,7 @@ fun SponsoredAdCard(
             // Badge de "Ad"
             Box(
                 modifier = Modifier
-                    .background(Color(0xFFE0E0E0), RoundedCornerShape(4.dp))
+                    .background(Color(0xFFE0E0E0), RoundedCornerShape(12.dp))
                     .padding(horizontal = 8.dp, vertical = 4.dp)
                     .align(Alignment.End)
                     .padding(bottom = 4.dp, end = 8.dp)

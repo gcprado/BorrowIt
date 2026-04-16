@@ -112,7 +112,7 @@ fun UploadItemDialog(
             modifier = Modifier
                 .fillMaxWidth(0.95f)
                 .fillMaxSize(0.9f),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(12.dp),
             color = MaterialTheme.colorScheme.surface
         ) {
             Column(
@@ -653,7 +653,7 @@ fun DateField(
         OutlinedButton(
             onClick = onClick,
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.outlinedButtonColors(
                 containerColor = Color.Transparent
             ),
@@ -747,7 +747,7 @@ fun ConfirmationDialog(
                 Text("Aceptar")
             }
         },
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(12.dp)
     )
 }
 
