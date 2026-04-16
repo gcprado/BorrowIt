@@ -29,6 +29,7 @@ enum class ItemsTab {
     BORROWED_ITEMS
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManageItemsScreen(
     navController: NavController
