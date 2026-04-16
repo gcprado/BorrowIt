@@ -1,4 +1,4 @@
-package com.pigs.borrowit.screens.components
+package com.pigs.borrowit.screens
 
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
@@ -10,8 +10,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.navigation.NavController
 import com.pigs.borrowit.control.AuthMode
+import com.pigs.borrowit.data.AuthRepository
 import com.pigs.borrowit.presentation.navigation.navigateAndClearStack
-import com.pigs.borrowit.screens.AuthScreen
 
 @Composable
 fun SignUpScreen(navController: NavController) {
@@ -19,40 +19,50 @@ fun SignUpScreen(navController: NavController) {
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showErrorDialog by remember { mutableStateOf(false) }
 
+    val repo = AuthRepository()
+
     AuthScreen(
         mode = AuthMode.SIGNUP,
         onSwitchMode = { navController.popBackStack() },
         onSubmit = { username, email, password ->
-            // lógica registro
-            if (handleRegister(username, email, password)) {
-                navController.navigateAndClearStack("main")
-                errorMessage = null
-                showErrorDialog = false
-            } else {
+
+            // 🔴 Validaciones básicas
+            if (username.isBlank() || email.isBlank() || password.isBlank()) {
+                errorMessage = "All fields are required"
                 showErrorDialog = true
+                return@AuthScreen
+            }
+
+            if (password.length < 6) {
+                errorMessage = "Password must be at least 6 characters"
+                showErrorDialog = true
+                return@AuthScreen
+            }
+
+            // 🔥 Firebase register
+            repo.register(email, password) { success, error ->
+
+                if (success) {
+                    navController.navigateAndClearStack("main")
+                } else {
+                    errorMessage = error ?: "Register failed"
+                    showErrorDialog = true
+                }
             }
         },
         errorMessage = errorMessage
     )
 
-    // AlertDialog que aparece como popup
     if (showErrorDialog) {
         AlertDialog(
             onDismissRequest = { showErrorDialog = false },
             title = { Text("Authentication error") },
-            text = { Text("Error creating account. Please check your information and try again.") },
+            text = { Text(errorMessage ?: "Error creating account") },
             confirmButton = {
-                TextButton(
-                    onClick = { showErrorDialog = false }
-                ) {
+                TextButton(onClick = { showErrorDialog = false }) {
                     Text("Accept")
                 }
             }
         )
     }
-}
-
-fun handleRegister(username: String, email: String, password: String): Boolean {
-    //TODO: Implementar registro en firestore
-    return false
 }

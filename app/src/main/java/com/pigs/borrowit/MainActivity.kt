@@ -12,8 +12,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.pigs.borrowit.presentation.navigation.AppNavGraph
 import com.pigs.borrowit.presentation.navigation.GraphRoute
-import com.pigs.borrowit.screens.components.LoginScreen
-import com.pigs.borrowit.screens.components.SignUpScreen
+import com.pigs.borrowit.screens.LoginScreen
+import com.pigs.borrowit.screens.SignUpScreen
 
 
 class MainActivity : ComponentActivity() {
@@ -22,7 +22,6 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
-            //LoginSignUpApp()
             BorrowitApp()
         }
     }

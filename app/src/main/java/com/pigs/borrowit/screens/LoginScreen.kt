@@ -1,4 +1,4 @@
-package com.pigs.borrowit.screens.components
+package com.pigs.borrowit.screens
 
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
@@ -10,8 +10,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.navigation.NavController
 import com.pigs.borrowit.control.AuthMode
+import com.pigs.borrowit.data.AuthRepository
 import com.pigs.borrowit.presentation.navigation.navigateAndClearStack
-import com.pigs.borrowit.screens.AuthScreen
 
 @Composable
 fun LoginScreen(navController: NavController) {
@@ -19,17 +19,29 @@ fun LoginScreen(navController: NavController) {
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showErrorDialog by remember { mutableStateOf(false) }
 
+    val repo = AuthRepository()
+
     AuthScreen(
         mode = AuthMode.LOGIN,
         onSwitchMode = { navController.navigate("signup") },
-        onSubmit = { username, _, password ->
-            // lógica login
-            if (handleLogin(username, password)) {
-                navController.navigateAndClearStack("main")
-                errorMessage = null
-                showErrorDialog = false
-            } else {
+        onSubmit = { email, _, password ->
+
+            // Validación
+            if (email.isBlank() || password.isBlank()) {
+                errorMessage = "Fields cannot be empty"
                 showErrorDialog = true
+                return@AuthScreen
+            }
+
+            // Firebase login
+            repo.login(email, password) { success, error ->
+
+                if (success) {
+                    navController.navigateAndClearStack("main")
+                } else {
+                    errorMessage = error ?: "Login failed"
+                    showErrorDialog = true
+                }
             }
         },
         errorMessage = errorMessage
@@ -50,9 +62,4 @@ fun LoginScreen(navController: NavController) {
             }
         )
     }
-}
-
-fun handleLogin(username: String, password: String): Boolean {
-    //TODO: Implementar login en firestore
-    return true
 }
