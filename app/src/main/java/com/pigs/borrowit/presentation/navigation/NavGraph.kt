@@ -60,7 +60,7 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         composable(Screen.Home.route) {
             HomeScreen(navController)
         }
-        composable(Screen.Search.route) {
+        composable(Screen.Communities.route) {
             CommsScreen(navController)
         }
         composable(Screen.Items.route) {

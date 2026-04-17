@@ -25,33 +25,22 @@ import com.pigs.borrowit.presentation.navigation.navigateSingleInStack
 @Composable
 fun MainBottomNav(
     navController: NavController,
-    modifier: Modifier = Modifier  // ← Añadido para permitir personalización desde fuera
+    modifier: Modifier = Modifier
 ) {
     val currentRoute = navController.currentBackStackEntry?.destination?.route
     val currentScreen = when (currentRoute) {
         Screen.Home.route -> "Home"
         Screen.Profile.route -> "Profile"
-        Screen.Search.route -> "Communities"
+        Screen.Communities.route -> "Communities"
         Screen.Items.route -> "Items"
         else -> ""
     }
 
-    // Eliminado el Box innecesario
     Row(
         modifier = modifier
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.systemBars)
-            .padding(top = 20.dp)
-            /*
-            .drawBehind {
-                // Línea en la parte superior del navbar
-                drawLine(
-                    color = Color.Gray,
-                    start = Offset(0f, 0f),
-                    end = Offset(size.width, 0f),
-                    strokeWidth = 0.5.dp.toPx()
-                )
-            }*/,
+            .padding(top = 20.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -60,7 +49,7 @@ fun MainBottomNav(
             screen = "Home",
             currentScreen,
             onClick = {
-                navController.navigateSingleInStack("home")
+                navController.navigateSingleInStack(Screen.Home.route)
             }
         )
         BottomNavItem(
@@ -68,7 +57,7 @@ fun MainBottomNav(
             screen = "Communities",
             currentScreen,
             onClick = {
-                navController.navigateSingleInStack("search")
+                navController.navigateSingleInStack(Screen.Communities.route)
             }
         )
         BottomNavItem(
@@ -76,7 +65,7 @@ fun MainBottomNav(
             screen = "Items",
             currentScreen,
             onClick = {
-                navController.navigateSingleInStack("items")
+                navController.navigateSingleInStack(Screen.Items.route)
             }
         )
         BottomNavItem(
@@ -84,7 +73,7 @@ fun MainBottomNav(
             screen = "Profile",
             currentScreen,
             onClick = {
-                navController.navigateSingleInStack("profile")
+                navController.navigateSingleInStack(Screen.Profile.route)
             }
         )
     }

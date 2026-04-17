@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -27,10 +28,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.pigs.borrowit.presentation.navigation.Screen
 import com.pigs.borrowit.screens.components.CreateCommDialog
 import com.pigs.borrowit.screens.components.MainBottomNav
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.util.Date
 
 data class Community(
     val name: String,
@@ -38,8 +41,14 @@ data class Community(
     val members: Int,
     val bannerUrl: String? = null,
     val profileUrl: String? = null,
-    val bannerColor: Color = Color(0xFFE0E0E0)
+    val bannerColor: Color = Color(0xFFE0E0E0),
+    val createdAt: Date = Date(),
+    val updatedAt: Date = Date()
 )
+
+enum class SortType {
+    ALPHABETICAL, CREATION, MODIFICATION
+}
 
 @Composable
 fun CommsScreen(navController: NavController) {
@@ -50,41 +59,65 @@ fun CommsScreen(navController: NavController) {
                 description = "Everything about car repair, tools sharing and engine maintenance.",
                 members = 152,
                 bannerUrl = "file:///android_asset/communities/mechanics/BannerGris.jpg",
-                profileUrl = "file:///android_asset/communities/mechanics/mechanics.jpg"
+                profileUrl = "file:///android_asset/communities/mechanics/mechanics.jpg",
+                createdAt = Date(System.currentTimeMillis() - 10000000),
+                updatedAt = Date(System.currentTimeMillis() - 5000000)
             ),
             Community(
                 name = "Gardening",
                 description = "Share your seeds, tools and tips for a beautiful green garden.",
                 members = 89,
                 bannerUrl = "file:///android_asset/communities/gardening/BannerVerde.jpg",
-                profileUrl = "file:///android_asset/communities/gardening/gardering.jpg"
+                profileUrl = "file:///android_asset/communities/gardening/gardering.jpg",
+                createdAt = Date(System.currentTimeMillis() - 20000000),
+                updatedAt = Date(System.currentTimeMillis() - 10000000)
             ),
             Community(
                 name = "Sports",
                 description = "Find partners for football, tennis or share your sports equipment.",
                 members = 214,
                 bannerUrl = "file:///android_asset/communities/sports/BannerAmarillo.jpg",
-                profileUrl = "file:///android_asset/communities/sports/sports.jpg"
+                profileUrl = "file:///android_asset/communities/sports/sports.jpg",
+                createdAt = Date(System.currentTimeMillis() - 5000000),
+                updatedAt = Date(System.currentTimeMillis() - 1000000)
             ),
             Community(
                 name = "IT & Computing",
                 description = "Tech support, hardware sharing and software development discussions.",
                 members = 342,
                 bannerUrl = "file:///android_asset/communities/technology/BannerAzul.jpg",
-                profileUrl = "file:///android_asset/communities/technology/computing.jpg"
+                profileUrl = "file:///android_asset/communities/technology/computing.jpg",
+                createdAt = Date(System.currentTimeMillis() - 15000000),
+                updatedAt = Date(System.currentTimeMillis() - 2000000)
             ),
             Community(
                 name = "Video Games",
                 description = "Gaming community. Borrow consoles, trade games and play together.",
                 members = 528,
                 bannerUrl = "file:///android_asset/communities/videogames/BannerMorado.jpg",
-                profileUrl = "file:///android_asset/communities/videogames/videogames.jpg"
+                profileUrl = "file:///android_asset/communities/videogames/videogames.jpg",
+                createdAt = Date(System.currentTimeMillis() - 30000000),
+                updatedAt = Date(System.currentTimeMillis() - 8000000)
             )
         )
     }
 
-    var selectedSort by remember { mutableStateOf("Newest") }
+    var selectedSort by remember { mutableStateOf(SortType.ALPHABETICAL) }
     var showCreateDialog by remember { mutableStateOf(false) }
+    val gridState = rememberLazyGridState()
+
+    val sortedCommunities = remember(communities.size, selectedSort) {
+        when (selectedSort) {
+            SortType.ALPHABETICAL -> communities.sortedBy { it.name.lowercase() }
+            SortType.CREATION -> communities.sortedByDescending { it.createdAt }
+            SortType.MODIFICATION -> communities.sortedByDescending { it.updatedAt }
+        }
+    }
+
+    // Scroll to top when sorting changes
+    LaunchedEffect(selectedSort) {
+        gridState.scrollToItem(0)
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -119,25 +152,26 @@ fun CommsScreen(navController: NavController) {
             // Sort Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = "Sort by:", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(end = 8.dp))
-                SortButton("Novedades", selectedSort == "Newest") { selectedSort = "Newest" }
-                Spacer(modifier = Modifier.width(8.dp))
-                SortButton("Populares", selectedSort == "Most Popular") { selectedSort = "Most Popular" }
+                Text(text = "Sort by:", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                SortButton("Name", selectedSort == SortType.ALPHABETICAL) { selectedSort = SortType.ALPHABETICAL }
+                SortButton("Creation", selectedSort == SortType.CREATION) { selectedSort = SortType.CREATION }
+                SortButton("Activity", selectedSort == SortType.MODIFICATION) { selectedSort = SortType.MODIFICATION }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
             // Grid of Communities
             LazyVerticalGrid(
+                state = gridState,
                 columns = GridCells.Fixed(2),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
-                items(communities) { community ->
+                items(sortedCommunities, key = { it.name }) { community ->
                     CommunityCard(community) {
                         val encodedDescription = URLEncoder.encode(community.description, StandardCharsets.UTF_8.toString())
                         val encodedBannerUrl = community.bannerUrl?.let { URLEncoder.encode(it, StandardCharsets.UTF_8.toString()) } ?: "null"
@@ -159,7 +193,7 @@ fun CommsScreen(navController: NavController) {
             contentColor = Color.White,
             shape = CircleShape
         ) {
-            Icon(Icons.Default.Add, contentDescription = "Crear Comunidad")
+            Icon(Icons.Default.Add, contentDescription = "Create Community")
         }
 
         // Navbar
@@ -172,12 +206,14 @@ fun CommsScreen(navController: NavController) {
             CreateCommDialog(
                 onDismiss = { showCreateDialog = false },
                 onCreate = { name, desc, banner, profile ->
-                    communities.add(0, Community(
+                    communities.add(Community(
                         name = name,
                         description = desc,
                         members = 1,
                         bannerUrl = banner,
-                        profileUrl = profile
+                        profileUrl = profile,
+                        createdAt = Date(),
+                        updatedAt = Date()
                     ))
                     showCreateDialog = false
                 }
@@ -188,18 +224,20 @@ fun CommsScreen(navController: NavController) {
 
 @Composable
 fun SortButton(text: String, isSelected: Boolean, onClick: () -> Unit) {
-    Button(
+    Surface(
         onClick = onClick,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = if (isSelected) Primary else Color.Transparent,
-            contentColor = if (isSelected) Color.White else Color.Gray
-        ),
+        color = if (isSelected) Primary else Color.Transparent,
+        contentColor = if (isSelected) Color.White else Color.Gray,
         shape = RoundedCornerShape(12.dp),
         border = if (!isSelected) BorderStroke(1.dp, Color.LightGray) else null,
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-        modifier = Modifier.height(36.dp)
+        modifier = Modifier.height(32.dp)
     ) {
-        Text(text = text, fontSize = 12.sp)
+        Box(
+            modifier = Modifier.padding(horizontal = 12.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(text = text, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+        }
     }
 }
 
@@ -238,7 +276,7 @@ fun CommunityCard(community: Community, onClick: () -> Unit) {
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 12.dp, vertical = 8.dp)
-                        .padding(top = 20.dp) // Space for the overlapping profile image
+                        .padding(top = 20.dp)
                 ) {
                     Text(
                         text = community.name,
@@ -257,7 +295,7 @@ fun CommunityCard(community: Community, onClick: () -> Unit) {
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "${community.members} miembros",
+                        text = "${community.members} members",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.Gray
                     )

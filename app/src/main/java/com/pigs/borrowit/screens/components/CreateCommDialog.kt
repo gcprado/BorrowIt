@@ -84,12 +84,12 @@ fun CreateCommDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Crear Comunidad",
+                        text = "Create Community",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Cerrar")
+                        Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                 }
 
@@ -101,7 +101,7 @@ fun CreateCommDialog(
                 ) {
                     // Banner Selection
                     Text(
-                        text = "Banner de la comunidad",
+                        text = "Community Banner",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(bottom = 8.dp)
@@ -163,7 +163,7 @@ fun CreateCommDialog(
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Text(
-                            text = "Imagen de perfil\n(opcional)",
+                            text = "Profile image\n(optional)",
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color.Gray
                         )
@@ -176,9 +176,9 @@ fun CreateCommDialog(
                         value = commName,
                         onValueChange = {
                             commName = it
-                            if (attemptedSubmit) nameError = if (it.isBlank()) "El nombre es obligatorio" else ""
+                            if (attemptedSubmit) nameError = if (it.isBlank()) "Name is required" else ""
                         },
-                        label = { Text("Nombre de la comunidad") },
+                        label = { Text("Community Name") },
                         modifier = Modifier.fillMaxWidth(),
                         isError = nameError.isNotEmpty(),
                         supportingText = { 
@@ -199,9 +199,9 @@ fun CreateCommDialog(
                         value = commDescription,
                         onValueChange = {
                             commDescription = it
-                            if (attemptedSubmit) descriptionError = if (it.isBlank()) "La descripción es obligatoria" else ""
+                            if (attemptedSubmit) descriptionError = if (it.isBlank()) "Description is required" else ""
                         },
-                        label = { Text("Descripción") },
+                        label = { Text("Description") },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(120.dp),
@@ -244,8 +244,8 @@ fun CreateCommDialog(
                             onCreate(commName, commDescription, bannerImageUri, profileImageUri)
                             onDismiss()
                         } else {
-                            nameError = if (!isNameValid) "El nombre es obligatorio" else ""
-                            descriptionError = if (!isDescValid) "La descripción es obligatoria" else ""
+                            nameError = if (!isNameValid) "Name is required" else ""
+                            descriptionError = if (!isDescValid) "Description is required" else ""
                             shouldShake = true
                         }
                     },
@@ -257,7 +257,7 @@ fun CreateCommDialog(
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Primary)
                 ) {
-                    Text("Crear Comunidad", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("Create Community", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
