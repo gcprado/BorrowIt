@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.pigs.borrowit.screens.components.CreateCommDialog
 import com.pigs.borrowit.screens.components.MainBottomNav
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -42,7 +44,7 @@ data class Community(
 @Composable
 fun CommsScreen(navController: NavController) {
     val communities = remember {
-        listOf(
+        mutableStateListOf(
             Community(
                 name = "Mechanics",
                 description = "Everything about car repair, tools sharing and engine maintenance.",
@@ -82,6 +84,7 @@ fun CommsScreen(navController: NavController) {
     }
 
     var selectedSort by remember { mutableStateOf("Newest") }
+    var showCreateDialog by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -120,11 +123,9 @@ fun CommsScreen(navController: NavController) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(text = "Sort by:", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(end = 8.dp))
-                SortButton("Newest", selectedSort == "Newest") { selectedSort = "Newest" }
+                SortButton("Novedades", selectedSort == "Newest") { selectedSort = "Newest" }
                 Spacer(modifier = Modifier.width(8.dp))
-                SortButton("Most Popular", selectedSort == "Most Popular") { selectedSort = "Most Popular" }
-                Spacer(modifier = Modifier.width(8.dp))
-                SortButton("Alphabetical", selectedSort == "Alphabetical") { selectedSort = "Alphabetical" }
+                SortButton("Populares", selectedSort == "Most Popular") { selectedSort = "Most Popular" }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -148,11 +149,40 @@ fun CommsScreen(navController: NavController) {
             }
         }
 
+        // FAB to create community
+        FloatingActionButton(
+            onClick = { showCreateDialog = true },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(bottom = 100.dp, end = 24.dp),
+            containerColor = Primary,
+            contentColor = Color.White,
+            shape = CircleShape
+        ) {
+            Icon(Icons.Default.Add, contentDescription = "Crear Comunidad")
+        }
+
         // Navbar
         MainBottomNav(
             navController = navController,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
+        
+        if (showCreateDialog) {
+            CreateCommDialog(
+                onDismiss = { showCreateDialog = false },
+                onCreate = { name, desc, banner, profile ->
+                    communities.add(0, Community(
+                        name = name,
+                        description = desc,
+                        members = 1,
+                        bannerUrl = banner,
+                        profileUrl = profile
+                    ))
+                    showCreateDialog = false
+                }
+            )
+        }
     }
 }
 
@@ -227,7 +257,7 @@ fun CommunityCard(community: Community, onClick: () -> Unit) {
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "${community.members} members",
+                        text = "${community.members} miembros",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.Gray
                     )
