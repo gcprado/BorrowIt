@@ -4,26 +4,13 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,24 +23,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.pigs.borrowit.R
+import com.pigs.borrowit.screens.components.ItemDetailDialog
 import com.pigs.borrowit.screens.components.MainBottomNav
 import com.pigs.borrowit.ui.theme.Background
 import com.pigs.borrowit.ui.theme.CardBackground
 import com.pigs.borrowit.ui.theme.Primary
 
-// Data class para objetos recomendados
-data class RecommendedItem(
-    val id: Int,
-    val name: String,
-    val location: String,
-    val rating: Double,
-    val borrowersCount: Int,
-    val iconRes: Int? = null,
-    val iconEmoji: String = "🔧"
-)
-
-// Data class para anuncios patrocinados
+// Data class for sponsored ads
 data class SponsoredAd(
     val id: Int,
     val title: String,
@@ -68,17 +46,19 @@ data class SponsoredAd(
 fun HomeScreen(
     navController: NavController
 ) {
-    // Datos de ejemplo - Fáciles de modificar y extender
-    val recommendedItems = listOf(
-        RecommendedItem(
-            id = 1,
-            name = "Power Drill Set",
-            location = "Available nearby • John's Tools",
-            rating = 4.8,
-            borrowersCount = 15,
-            iconEmoji = "🔧"
+    // Recommended item from a community
+    val recommendedItem = remember {
+        CommunityItem(
+            id = "vg1",
+            name = "Nintendo Switch",
+            description = "Console with 2 Joy-Cons. Perfect for parties or a weekend of gaming.",
+            imageUrls = listOf("file:///android_asset/communities/videogames/Switch.jpg"),
+            author = "Will Byers",
+            condition = "Excellent condition",
+            startDate = "2023-12-01",
+            endDate = "2023-12-05"
         )
-    )
+    }
 
     val sponsoredAds = listOf(
         SponsoredAd(
@@ -101,98 +81,100 @@ fun HomeScreen(
         )
     )
 
+    var selectedItem by remember { mutableStateOf<CommunityItem?>(null) }
+
     Box(modifier = Modifier.fillMaxSize().background(Background)) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(
-                    top = 16.dp,
-                    start = 16.dp,
-                    end = 16.dp,
-                    bottom = 80.dp
-                )
+                .padding(bottom = 80.dp)
         ) {
-            // Header con perfil y saludo
+            // Profile Header
             item {
                 ProfileHeader()
-            }
-
-            // Sección de recomendaciones
-            item {
-                SectionHeader(
-                    title = "Recommended for you",
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp)
-                )
-            }
-
-            // Lista de objetos recomendados
-            items(recommendedItems) { item ->
-                RecommendedItemCard(item = item)
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // Sección de anuncios patrocinados
+            // Recommendations Section
             item {
                 SectionHeader(
-                    title = "Sponsored",
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+                    title = "Recommended for you",
+                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 8.dp)
+                )
+            }
+
+            item {
+                HomeRecommendedCard(
+                    item = recommendedItem,
+                    onClick = { selectedItem = recommendedItem }
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            // Sponsored Section
+            item {
+                SectionHeader(
+                    title = "Sponsored deals",
+                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 12.dp),
                     fontSize = 14,
                     fontWeight = FontWeight.Medium,
                     color = Color.Gray
                 )
             }
 
-            // Lista de anuncios
+            // Ads List
             items(sponsoredAds) { ad ->
-                SponsoredAdCard(ad = ad)
+                HomeSponsoredAdCard(ad = ad)
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // Espacio final para mejor experiencia de scroll
             item {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
 
         MainBottomNav(navController, modifier = Modifier.align(Alignment.BottomCenter))
+
+        selectedItem?.let { item ->
+            ItemDetailDialog(
+                item = item,
+                onDismiss = { selectedItem = null },
+                onBorrow = { /* Handle borrow logic */ }
+            )
+        }
     }
 }
 
 @Composable
-fun ProfileHeader(
-    onNotificationClick: () -> Unit = {}
-) {
+fun ProfileHeader() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(all = 16.dp)
+            .padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 20.dp)
             .drawBehind {
-                val lineY = size.height + 8.dp.toPx()
+                val lineY = size.height + 10.dp.toPx()
                 drawLine(
-                    color = Color.Gray,
+                    color = Color.LightGray.copy(alpha = 0.5f),
                     start = Offset(0f, lineY),
                     end = Offset(size.width, lineY),
-                    strokeWidth = 0.5.dp.toPx()
+                    strokeWidth = 1.dp.toPx()
                 )
             },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // Parte izquierda: imagen de perfil y texto
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Image(
                 painter = painterResource(id = R.drawable.profilepicture_default),
-                contentDescription = "Profile Image",
+                contentDescription = "Profile",
                 modifier = Modifier
-                    .size(50.dp)
+                    .size(52.dp)
                     .clip(CircleShape)
-                    .border(2.dp, Color.LightGray, CircleShape),
+                    .border(2.dp, Primary.copy(alpha = 0.5f), CircleShape),
                 contentScale = ContentScale.Crop
             )
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
             Column {
                 Text(
@@ -209,15 +191,7 @@ fun ProfileHeader(
             }
         }
 
-        // Parte derecha: ícono de notificación
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(Color.Transparent)
-                .clickable { onNotificationClick() },
-            contentAlignment = Alignment.Center
-        ) {
+        IconButton(onClick = { }) {
             Icon(
                 painter = painterResource(id = R.drawable.notification_symbol),
                 contentDescription = "Notifications",
@@ -232,7 +206,7 @@ fun ProfileHeader(
 fun SectionHeader(
     title: String,
     modifier: Modifier = Modifier,
-    fontSize: Int = 18,
+    fontSize: Int = 20,
     fontWeight: FontWeight = FontWeight.Bold,
     color: Color = Color.Black
 ) {
@@ -246,176 +220,134 @@ fun SectionHeader(
 }
 
 @Composable
-fun RecommendedItemCard(
-    item: RecommendedItem,
-    onBorrowClick: () -> Unit = {}
+fun HomeRecommendedCard(
+    item: CommunityItem,
+    onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp),
-        shape = RoundedCornerShape(12.dp),
+            .padding(horizontal = 24.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = CardBackground),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Icono del objeto
-            if (item.iconRes != null) {
-                Image(
-                    painter = painterResource(id = item.iconRes),
+        Column {
+            Box(modifier = Modifier.fillMaxWidth().height(160.dp)) {
+                AsyncImage(
+                    model = item.imageUrls.firstOrNull(),
                     contentDescription = item.name,
-                    modifier = Modifier
-                        .size(70.dp)
-                        .clip(RoundedCornerShape(12.dp)),
+                    modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(70.dp)
-                        .background(Color(0xFFE0E0E0), RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
+                Surface(
+                    modifier = Modifier.padding(12.dp).align(Alignment.TopEnd),
+                    color = Primary,
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = item.iconEmoji,
-                        fontSize = 32.sp
+                        text = "NEW",
+                        color = Color.White,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 4.dp)
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Información del objeto
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
+            
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = item.name,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Free",
+                        color = Primary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
                 Text(
-                    text = item.name,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                )
-                Text(
-                    text = item.location,
+                    text = "Lent by ${item.author} • Video Games",
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "⭐ ${item.rating} • ${item.borrowersCount} people borrowing",
-                    fontSize = 11.sp,
-                    color = Color(0xFF4CAF50)
-                )
-            }
-
-            // Botón de acción
-            Box(
-                modifier = Modifier
-                    .background(Primary, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-                    .clip(RoundedCornerShape(12.dp))
-            ) {
-                Text(
-                    text = "Borrow",
-                    fontSize = 12.sp,
-                    color = Color.White,
-                    fontWeight = FontWeight.Medium
-                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Button(
+                    onClick = onClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Primary)
+                ) {
+                    Text("Details", fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
 }
 
 @Composable
-fun SponsoredAdCard(
-    ad: SponsoredAd,
-    onCtaClick: () -> Unit = {}
-) {
+fun HomeSponsoredAdCard(ad: SponsoredAd) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp),
-        shape = RoundedCornerShape(12.dp),
+            .padding(horizontal = 24.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = CardBackground),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth()
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Imagen del anuncio
             Image(
                 painter = painterResource(id = ad.imageRes),
                 contentDescription = ad.title,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(150.dp)
-                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
+                    .size(80.dp)
+                    .clip(RoundedCornerShape(12.dp)),
                 contentScale = ContentScale.Crop
             )
 
-            // Información del anuncio
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = ad.title,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black
-                    )
-                    Text(
-                        text = "by ${ad.brand} • Sponsored",
-                        fontSize = 12.sp,
-                        color = Color.Gray
-                    )
-                    Text(
-                        text = ad.description,
-                        fontSize = 11.sp,
-                        color = Color(0xFF757575)
-                    )
-                }
+            Spacer(modifier = Modifier.width(16.dp))
 
-                // Botón CTA
-                Box(
-                    modifier = Modifier
-                        .background(ad.ctaColor, RoundedCornerShape(12.dp))
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .clip(RoundedCornerShape(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = ad.title,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = ad.brand,
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    color = ad.ctaColor.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.clickable { }
                 ) {
                     Text(
                         text = ad.ctaText,
-                        fontSize = 12.sp,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
+                        color = ad.ctaColor,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 6.dp)
                     )
                 }
-            }
-
-            // Badge de "Ad"
-            Box(
-                modifier = Modifier
-                    .background(Color(0xFFE0E0E0), RoundedCornerShape(12.dp))
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                    .align(Alignment.End)
-                    .padding(bottom = 4.dp, end = 8.dp)
-            ) {
-                Text(
-                    text = "AD",
-                    fontSize = 10.sp,
-                    color = Color.Gray,
-                    fontWeight = FontWeight.Bold
-                )
             }
         }
     }
