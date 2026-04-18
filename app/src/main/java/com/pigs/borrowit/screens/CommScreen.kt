@@ -1,25 +1,61 @@
 package com.pigs.borrowit.screens
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import com.pigs.borrowit.ui.theme.Primary
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -28,6 +64,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.pigs.borrowit.screens.components.EditCommDialog
 import com.pigs.borrowit.screens.components.ItemDetailDialog
+import com.pigs.borrowit.ui.theme.Primary
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 
@@ -40,6 +77,13 @@ data class CommunityItem(
     val condition: String,
     val startDate: String,
     val endDate: String
+)
+
+data class CommunityMember(
+    val id: String,
+    val name: String,
+    val role: String, // "Admin" or "Member"
+    val profileUrl: String? = null
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,6 +102,7 @@ fun CommScreen(
 
     var selectedItem by remember { mutableStateOf<CommunityItem?>(null) }
     var showEditDialog by remember { mutableStateOf(false) }
+    var selectedTab by remember { mutableIntStateOf(0) } // 0: Items, 1: Members
 
     val itemsInCommunity = remember(currentName) {
         when (currentName) {
@@ -85,6 +130,16 @@ fun CommScreen(
             )
             else -> emptyList()
         }
+    }
+
+    val membersList = remember {
+        mutableStateListOf(
+            CommunityMember("u1", "John Doe (You)", "Admin"),
+            CommunityMember("u2", "Mike Wheeler", "Member"),
+            CommunityMember("u3", "Dustin Henderson", "Member"),
+            CommunityMember("u4", "Lucas Sinclair", "Member"),
+            CommunityMember("u5", "Nancy Wheeler", "Member")
+        )
     }
 
     Scaffold(
@@ -156,19 +211,69 @@ fun CommScreen(
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(text = currentDescription, style = MaterialTheme.typography.bodyLarge, color = Color.DarkGray)
                             Spacer(modifier = Modifier.height(24.dp))
-                            OutlinedButton(onClick = { }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, Color.LightGray)) {
-                                Text("Share Community", color = Color.Gray)
+                            
+                            TabRow(
+                                selectedTabIndex = selectedTab,
+                                containerColor = Color.Transparent,
+                                contentColor = Primary,
+                                indicator = { tabPositions ->
+                                    TabRowDefaults.SecondaryIndicator(
+                                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                                        color = Primary
+                                    )
+                                },
+                                divider = {}
+                            ) {
+                                Tab(
+                                    selected = selectedTab == 0,
+                                    onClick = { selectedTab = 0 },
+                                    text = { Text("Items", fontWeight = if(selectedTab == 0) FontWeight.Bold else FontWeight.Normal) }
+                                )
+                                Tab(
+                                    selected = selectedTab == 1,
+                                    onClick = { selectedTab = 1 },
+                                    text = { Text("Members", fontWeight = if(selectedTab == 1) FontWeight.Bold else FontWeight.Normal) }
+                                )
                             }
-                            Spacer(modifier = Modifier.height(32.dp))
-                            Text(text = "Available Items", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), modifier = Modifier.padding(bottom = 16.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
                         }
                     }
                 }
             }
 
-            items(itemsInCommunity) { item ->
-                ItemCard(item) { selectedItem = item }
-                Spacer(modifier = Modifier.height(12.dp))
+            if (selectedTab == 0) {
+                items(itemsInCommunity) { item ->
+                    ItemCard(item) { selectedItem = item }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+            } else {
+                item {
+                    Button(
+                        onClick = { /* Invitation logic */ },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Primary)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Invite Members", fontWeight = FontWeight.Bold)
+                    }
+                }
+                items(membersList) { member ->
+                    MemberCard(
+                        member = member,
+                        onDelete = { membersList.remove(member) },
+                        onPromote = { 
+                            val index = membersList.indexOf(member)
+                            if (index != -1) {
+                                membersList[index] = member.copy(role = "Admin")
+                            }
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
             }
         }
     }
@@ -190,6 +295,10 @@ fun CommScreen(
             onDelete = {
                 showEditDialog = false
                 navController.popBackStack()
+            },
+            onLeave = {
+                showEditDialog = false
+                navController.popBackStack()
             }
         )
     }
@@ -200,6 +309,88 @@ fun CommScreen(
             onDismiss = { selectedItem = null },
             onBorrow = { /* Logic for borrowing if needed */ }
         )
+    }
+}
+
+@Composable
+fun MemberCard(
+    member: CommunityMember,
+    onDelete: () -> Unit,
+    onPromote: () -> Unit
+) {
+    var showMenu by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp).fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(if (member.role == "Admin") Primary.copy(alpha = 0.1f) else Color.LightGray.copy(alpha = 0.3f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (member.role == "Admin") Icons.Default.Shield else Icons.Default.Person,
+                    contentDescription = null,
+                    tint = if (member.role == "Admin") Primary else Color.Gray,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = member.name,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+                Text(
+                    text = member.role,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (member.role == "Admin") Primary else Color.Gray
+                )
+            }
+            
+            // Don't show menu for the current user
+            if (!member.name.contains("(You)")) {
+                Box {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "Options")
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        if (member.role != "Admin") {
+                            DropdownMenuItem(
+                                text = { Text("Promote to Admin") },
+                                onClick = {
+                                    onPromote()
+                                    showMenu = false
+                                },
+                                leadingIcon = { Icon(Icons.Default.Shield, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text("Remove from Community", color = MaterialTheme.colorScheme.error) },
+                            onClick = {
+                                onDelete()
+                                showMenu = false
+                            },
+                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error) }
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
