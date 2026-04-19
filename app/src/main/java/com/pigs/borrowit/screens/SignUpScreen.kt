@@ -40,15 +40,20 @@ fun SignUpScreen(navController: NavController) {
             }
 
             // 🔥 Firebase register
-            repo.register(email, password) { success, error ->
-
-                if (success) {
-                    navController.navigateAndClearStack("main")
-                } else {
-                    errorMessage = error ?: "Register failed"
-                    showErrorDialog = true
+            repo.register(
+                email = email,
+                password = password,
+                username = username,          // ✅ Ahora se pasa el nombre de usuario
+                profilePictureUrl = "",       // Inicialmente vacío, se puede actualizar después
+                onResult = { success, error ->
+                    if (success) {
+                        navController.navigateAndClearStack("main")
+                    } else {
+                        errorMessage = error ?: "Register failed"
+                        showErrorDialog = true
+                    }
                 }
-            }
+            )
         },
         errorMessage = errorMessage
     )
