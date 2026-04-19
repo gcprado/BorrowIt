@@ -1,4 +1,4 @@
-package com.pigs.borrowit.data
+package com.pigs.borrowit.data.repositories
 
 import com.google.firebase.auth.FirebaseAuth
 

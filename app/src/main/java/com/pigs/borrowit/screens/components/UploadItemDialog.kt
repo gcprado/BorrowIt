@@ -35,12 +35,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -61,21 +58,24 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
+import com.pigs.borrowit.data.model.Availability
+import com.pigs.borrowit.data.model.Item
+import com.pigs.borrowit.data.repositories.ItemRepository
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -83,7 +83,9 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UploadItemDialog(
-    onDismiss: () -> Unit
+    userId: String,                     // ID del usuario logueado
+    onDismiss: () -> Unit,
+    onItemUploaded: (String) -> Unit = {} // callback con el ID del documento creado
 ) {
     var itemName by remember { mutableStateOf("") }
     var itemDescription by remember { mutableStateOf("") }
@@ -92,7 +94,7 @@ fun UploadItemDialog(
     var startDate by remember { mutableStateOf("") }
     var endDate by remember { mutableStateOf("") }
     var showConfirmation by remember { mutableStateOf(false) }
-    
+
     var nameError by remember { mutableStateOf("") }
     var descriptionError by remember { mutableStateOf("") }
     var dateError by remember { mutableStateOf("") }
@@ -100,9 +102,14 @@ fun UploadItemDialog(
     var imageError by remember { mutableStateOf("") }
     var attemptedSubmit by remember { mutableStateOf(false) }
     var shouldShake by remember { mutableStateOf(false) }
-    
+
+    // Estados para la subida
+    var isUploading by remember { mutableStateOf(false) }
+    var uploadError by remember { mutableStateOf<String?>(null) }
+
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val repository = remember { ItemRepository() }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -116,11 +123,10 @@ fun UploadItemDialog(
             color = MaterialTheme.colorScheme.surface
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
+                modifier = Modifier.fillMaxSize()
             ) {
                 DialogHeader(onDismiss = onDismiss)
-                
+
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -128,11 +134,11 @@ fun UploadItemDialog(
                         .padding(horizontal = 24.dp)
                 ) {
                     Spacer(modifier = Modifier.height(8.dp))
-                    
+
                     SingleLineTextField(
                         label = "Nombre del item",
                         value = itemName,
-                        onValueChange = { 
+                        onValueChange = {
                             itemName = it
                             if (attemptedSubmit) {
                                 nameError = validateName(it)
@@ -143,13 +149,13 @@ fun UploadItemDialog(
                         errorMessage = nameError,
                         isRequired = true
                     )
-                    
+
                     Spacer(modifier = Modifier.height(20.dp))
-                    
+
                     TextArea(
                         label = "Descripción",
                         value = itemDescription,
-                        onValueChange = { 
+                        onValueChange = {
                             itemDescription = it
                             if (attemptedSubmit) {
                                 descriptionError = validateDescription(it)
@@ -161,12 +167,12 @@ fun UploadItemDialog(
                         isError = descriptionError.isNotEmpty(),
                         errorMessage = descriptionError
                     )
-                    
+
                     Spacer(modifier = Modifier.height(20.dp))
-                    
+
                     ConditionSelector(
                         selectedCondition = selectedCondition,
-                        onConditionSelected = { 
+                        onConditionSelected = {
                             selectedCondition = it
                             if (attemptedSubmit) {
                                 conditionError = validateCondition(it)
@@ -174,18 +180,18 @@ fun UploadItemDialog(
                         },
                         errorMessage = conditionError
                     )
-                    
+
                     Spacer(modifier = Modifier.height(20.dp))
-                    
+
                     ImageUploadSection(
                         imageUris = imageUris,
-                        onAddImage = { uri -> 
+                        onAddImage = { uri ->
                             imageUris.add(uri)
                             if (attemptedSubmit) {
                                 imageError = validateImages(imageUris.toList())
                             }
                         },
-                        onRemoveImage = { index -> 
+                        onRemoveImage = { index ->
                             imageUris.removeAt(index)
                             if (attemptedSubmit) {
                                 imageError = validateImages(imageUris.toList())
@@ -193,19 +199,19 @@ fun UploadItemDialog(
                         },
                         errorMessage = imageError
                     )
-                    
+
                     Spacer(modifier = Modifier.height(20.dp))
-                    
+
                     DateRangeSelector(
                         startDate = startDate,
                         endDate = endDate,
-                        onStartDateSelected = { 
+                        onStartDateSelected = {
                             startDate = it
                             if (attemptedSubmit) {
                                 dateError = validateDates(it, endDate)
                             }
                         },
-                        onEndDateSelected = { 
+                        onEndDateSelected = {
                             endDate = it
                             if (attemptedSubmit) {
                                 dateError = validateDates(startDate, it)
@@ -213,10 +219,10 @@ fun UploadItemDialog(
                         },
                         errorMessage = dateError
                     )
-                    
+
                     Spacer(modifier = Modifier.height(24.dp))
                 }
-                
+
                 PublishButton(
                     onClick = {
                         attemptedSubmit = true
@@ -225,12 +231,12 @@ fun UploadItemDialog(
                         dateError = validateDates(startDate, endDate)
                         conditionError = validateCondition(selectedCondition)
                         imageError = validateImages(imageUris.toList())
-                        
+
                         val hasErrors = listOf(
-                            nameError, descriptionError, dateError, 
+                            nameError, descriptionError, dateError,
                             conditionError, imageError
                         ).any { it.isNotEmpty() }
-                        
+
                         if (hasErrors) {
                             shouldShake = true
                             vibrateDevice(context)
@@ -244,14 +250,50 @@ fun UploadItemDialog(
                 )
             }
         }
-        
+
         if (showConfirmation) {
             ConfirmationDialog(
                 onConfirm = {
                     showConfirmation = false
-                    onDismiss()
+                    scope.launch {
+                        isUploading = true
+                        uploadError = null
+                        try {
+                            val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                            val startDateObj = dateFormat.parse(startDate) ?: throw Exception("Fecha inicio inválida")
+                            val endDateObj = dateFormat.parse(endDate) ?: throw Exception("Fecha fin inválida")
+                            val availability = Availability(startDateObj, endDateObj)
+                            val pictureUrl = imageUris.firstOrNull() ?: ""
+
+                            val newItem = Item(
+                                name = itemName,
+                                description = itemDescription,
+                                owner = userId,
+                                condition = selectedCondition,
+                                picture = pictureUrl,
+                                availability = availability
+                            )
+
+                            val result = repository.addItemSuspend(newItem)
+                            result.onSuccess { docId ->
+                                onItemUploaded(docId)
+                                onDismiss()
+                            }.onFailure { e ->
+                                uploadError = e.message ?: "Error desconocido"
+                                isUploading = false
+                            }
+                        } catch (e: Exception) {
+                            uploadError = e.message ?: "Error de formato"
+                            isUploading = false
+                        }
+                    }
                 },
-                onDismiss = { showConfirmation = false }
+                onDismiss = {
+                    showConfirmation = false
+                    uploadError = null
+                },
+                isUploading = isUploading,
+                errorMessage = uploadError
             )
         }
     }
@@ -262,19 +304,21 @@ fun DialogHeader(onDismiss: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(24.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "Añadir nuevo objeto",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
+            text = "Subir Item",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
         )
         IconButton(onClick = onDismiss) {
             Icon(
                 imageVector = Icons.Default.Close,
-                contentDescription = "Cerrar"
+                contentDescription = "Cerrar",
+                tint = MaterialTheme.colorScheme.onSurface
             )
         }
     }
@@ -285,45 +329,43 @@ fun SingleLineTextField(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
-    placeholder: String = "",
+    placeholder: String,
     isError: Boolean = false,
     errorMessage: String = "",
-    isRequired: Boolean = false,
-    trailingIcon: @Composable (() -> Unit)? = null
+    isRequired: Boolean = false
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = if (isRequired) "$label *" else label,
-            fontSize = 16.sp,
-            color = if (isError) {
-                MaterialTheme.colorScheme.error
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            },
-            modifier = Modifier.padding(bottom = 4.dp)
-        )
+        Row {
+            Text(
+                text = label,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (isRequired) {
+                Text(text = " *", color = Color.Red, fontSize = 14.sp)
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = value,
-            onValueChange = { newValue -> onValueChange(newValue) },
+            onValueChange = onValueChange,
             modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text(placeholder) },
             singleLine = true,
-            placeholder = if (placeholder.isNotEmpty()) {
-                { Text(placeholder) }
-            } else null,
             isError = isError,
-            trailingIcon = trailingIcon,
+            shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                errorBorderColor = MaterialTheme.colorScheme.error
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline
             )
         )
-        if (errorMessage.isNotEmpty()) {
+        if (isError) {
             Text(
                 text = errorMessage,
-                fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = 4.dp, top = 4.dp)
             )
         }
     }
@@ -334,86 +376,74 @@ fun TextArea(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
-    placeholder: String = "",
+    placeholder: String,
     minLines: Int = 3,
     maxLines: Int = 5,
     isError: Boolean = false,
-    errorMessage: String = "",
-    enabled: Boolean = true
+    errorMessage: String = ""
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = label,
-            fontSize = 16.sp,
-            color = if (isError) {
-                MaterialTheme.colorScheme.error
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            },
-            modifier = Modifier.padding(bottom = 4.dp)
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
         )
-
+        Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = value,
-            onValueChange = { newValue -> onValueChange(newValue) },
+            onValueChange = onValueChange,
             modifier = Modifier.fillMaxWidth(),
-            placeholder = if (placeholder.isNotEmpty()) {
-                { Text(placeholder) }
-            } else null,
+            placeholder = { Text(placeholder) },
             minLines = minLines,
             maxLines = maxLines,
-            singleLine = false,
             isError = isError,
-            enabled = enabled,
+            shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                errorBorderColor = MaterialTheme.colorScheme.error
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline
             )
         )
-        if (errorMessage.isNotEmpty()) {
+        if (isError) {
             Text(
                 text = errorMessage,
-                fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = 4.dp, top = 4.dp)
             )
         }
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ConditionSelector(
     selectedCondition: String,
     onConditionSelected: (String) -> Unit,
     errorMessage: String = ""
 ) {
-    val conditions = listOf("Nuevo", "Usado", "Excelente estado", "Buen estado", "Estado aceptable")
-    
+    val conditions = listOf("Nuevo", "Como nuevo", "Buen estado", "Usado", "Aceptable")
+    val isError = errorMessage.isNotEmpty()
+
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "Condición *",
-            fontSize = 16.sp,
+            text = "Condición",
+            fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
-            color = if (errorMessage.isNotEmpty()) {
-                MaterialTheme.colorScheme.error
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            },
-            modifier = Modifier.padding(bottom = 8.dp)
+            color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
         )
-        
+        Spacer(modifier = Modifier.height(8.dp))
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             conditions.forEach { condition ->
                 FilterChip(
                     selected = selectedCondition == condition,
                     onClick = { onConditionSelected(condition) },
                     label = { Text(condition) },
+                    shape = RoundedCornerShape(20.dp),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                         selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -421,13 +451,12 @@ fun ConditionSelector(
                 )
             }
         }
-        
-        if (errorMessage.isNotEmpty()) {
+        if (isError) {
             Text(
                 text = errorMessage,
-                fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(start = 16.dp, top = 8.dp)
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = 4.dp, top = 4.dp)
             )
         }
     }
@@ -440,112 +469,89 @@ fun ImageUploadSection(
     onRemoveImage: (Int) -> Unit,
     errorMessage: String = ""
 ) {
+    val isError = errorMessage.isNotEmpty()
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         uri?.let { onAddImage(it.toString()) }
     }
-    
+
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "Imágenes *",
-            fontSize = 16.sp,
+            text = "Imágenes (al menos una)",
+            fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
-            color = if (errorMessage.isNotEmpty()) {
-                MaterialTheme.colorScheme.error
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            },
-            modifier = Modifier.padding(bottom = 8.dp)
+            color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
         )
-        
-        Row(
+        Spacer(modifier = Modifier.height(12.dp))
+
+        FlowRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(100.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .border(
-                        width = 2.dp,
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    .clickable { launcher.launch("image/*") },
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Agregar foto",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(32.dp)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Agregar\nfotos",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.primary,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-            
-            imageUris.take(2).forEachIndexed { index, uri ->
+            imageUris.forEachIndexed { index, uri ->
                 Box(
                     modifier = Modifier
-                        .size(100.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .size(80.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
                 ) {
                     AsyncImage(
                         model = uri,
-                        contentDescription = "Imagen ${index + 1}",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(12.dp)),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
-                    IconButton(
-                        onClick = { onRemoveImage(index) },
+                    Box(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .size(24.dp)
+                            .padding(2.dp)
+                            .size(20.dp)
                             .background(
-                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-                                shape = RoundedCornerShape(12.dp)
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                                RoundedCornerShape(10.dp)
                             )
+                            .clickable { onRemoveImage(index) },
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Eliminar",
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(14.dp),
                             tint = MaterialTheme.colorScheme.error
                         )
                     }
                 }
             }
+
+            if (imageUris.size < 5) {
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .border(
+                            BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                            RoundedCornerShape(8.dp)
+                        )
+                        .clickable { launcher.launch("image/*") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Agregar imagen",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
-        
-        if (imageUris.isNotEmpty()) {
-            Text(
-                text = "${imageUris.size} imagen${if (imageUris.size > 1) "es" else ""} seleccionada${if (imageUris.size > 1) "s" else ""}",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-        }
-        
-        if (errorMessage.isNotEmpty()) {
+        if (isError) {
             Text(
                 text = errorMessage,
-                fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(start = 16.dp, top = 8.dp)
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = 4.dp, top = 4.dp)
             )
         }
     }
@@ -560,124 +566,78 @@ fun DateRangeSelector(
     errorMessage: String = ""
 ) {
     val context = LocalContext.current
-    val calendar = Calendar.getInstance()
-    val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-    
-    val startDatePickerDialog = DatePickerDialog(
-        context,
-        { _, year, month, dayOfMonth ->
-            calendar.set(year, month, dayOfMonth)
-            onStartDateSelected(dateFormat.format(calendar.time))
-        },
-        calendar.get(Calendar.YEAR),
-        calendar.get(Calendar.MONTH),
-        calendar.get(Calendar.DAY_OF_MONTH)
-    )
-    
-    val endDatePickerDialog = DatePickerDialog(
-        context,
-        { _, year, month, dayOfMonth ->
-            calendar.set(year, month, dayOfMonth)
-            onEndDateSelected(dateFormat.format(calendar.time))
-        },
-        calendar.get(Calendar.YEAR),
-        calendar.get(Calendar.MONTH),
-        calendar.get(Calendar.DAY_OF_MONTH)
-    )
-    
+    val isError = errorMessage.isNotEmpty()
+
+    fun showDatePicker(currentDate: String, onDateSelected: (String) -> Unit) {
+        val calendar = Calendar.getInstance()
+        if (currentDate.isNotEmpty()) {
+            try {
+                val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                sdf.parse(currentDate)?.let { calendar.time = it }
+            } catch (e: Exception) {}
+        }
+
+        DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val formattedMonth = String.format("%02d", month + 1)
+                val formattedDay = String.format("%02d", dayOfMonth)
+                onDateSelected("$formattedDay/$formattedMonth/$year")
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        ).show()
+    }
+
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "Disponibilidad *",
-            fontSize = 16.sp,
+            text = "Disponibilidad",
+            fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
-            color = if (errorMessage.isNotEmpty()) {
-                MaterialTheme.colorScheme.error
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            },
-            modifier = Modifier.padding(bottom = 8.dp)
+            color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
         )
-        
+        Spacer(modifier = Modifier.height(8.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            DateField(
-                label = "Fecha inicio",
-                value = startDate,
-                onClick = { startDatePickerDialog.show() },
+            OutlinedButton(
+                onClick = { showDatePicker(startDate, onStartDateSelected) },
                 modifier = Modifier.weight(1f),
-                isError = errorMessage.isNotEmpty()
-            )
-            
-            DateField(
-                label = "Fecha fin",
-                value = endDate,
-                onClick = { endDatePickerDialog.show() },
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp)
+            ) {
+                Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = startDate.ifEmpty { "Inicio" },
+                    fontSize = 14.sp,
+                    maxLines = 1
+                )
+            }
+
+            OutlinedButton(
+                onClick = { showDatePicker(endDate, onEndDateSelected) },
                 modifier = Modifier.weight(1f),
-                isError = errorMessage.isNotEmpty()
-            )
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp)
+            ) {
+                Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = endDate.ifEmpty { "Fin" },
+                    fontSize = 14.sp,
+                    maxLines = 1
+                )
+            }
         }
-        
-        if (errorMessage.isNotEmpty()) {
+        if (isError) {
             Text(
                 text = errorMessage,
-                fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(start = 16.dp, top = 4.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun DateField(
-    label: String,
-    value: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    isError: Boolean = false
-) {
-    Column(modifier = modifier) {
-        Text(
-            text = label,
-            fontSize = 14.sp,
-            color = if (isError) {
-                MaterialTheme.colorScheme.error
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-            modifier = Modifier.padding(bottom = 4.dp)
-        )
-        
-        OutlinedButton(
-            onClick = onClick,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.outlinedButtonColors(
-                containerColor = Color.Transparent
-            ),
-            border = if (isError) {
-                BorderStroke(1.dp, MaterialTheme.colorScheme.error)
-            } else {
-                ButtonDefaults.outlinedButtonBorder
-            },
-            contentPadding = PaddingValues(12.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.CalendarToday,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = value.ifEmpty { "Seleccionar" },
-                fontSize = 14.sp,
-                color = if (value.isEmpty()) 
-                    MaterialTheme.colorScheme.onSurfaceVariant 
-                else 
-                    MaterialTheme.colorScheme.onSurface
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = 4.dp, top = 4.dp)
             )
         }
     }
@@ -691,20 +651,18 @@ fun PublishButton(
     onShakeComplete: () -> Unit = {}
 ) {
     val offsetX = remember { Animatable(0f) }
-    
+
     LaunchedEffect(shouldShake) {
         if (shouldShake) {
-            val shakeKeyframes = listOf(0f, -10f, 10f, -10f, 10f, -5f, 5f, 0f)
-            shakeKeyframes.forEach { offset ->
-                offsetX.animateTo(
-                    targetValue = offset,
-                    animationSpec = tween(durationMillis = 50)
-                )
+            repeat(4) {
+                offsetX.animateTo(10f, animationSpec = tween(50))
+                offsetX.animateTo(-10f, animationSpec = tween(50))
             }
+            offsetX.animateTo(0f, animationSpec = tween(50))
             onShakeComplete()
         }
     }
-    
+
     Button(
         onClick = onClick,
         modifier = modifier
@@ -729,28 +687,44 @@ fun PublishButton(
 @Composable
 fun ConfirmationDialog(
     onConfirm: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    isUploading: Boolean = false,
+    errorMessage: String? = null
 ) {
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!isUploading) onDismiss() },
         title = {
             Text(
-                text = "¡Publicación exitosa!",
+                text = if (errorMessage != null) "Error" else "¡Publicación exitosa!",
                 fontWeight = FontWeight.Bold
             )
         },
         text = {
-            Text("Tu objeto ha sido publicado correctamente.")
+            when {
+                errorMessage != null -> Text(errorMessage)
+                isUploading -> Text("Subiendo objeto...")
+                else -> Text("Tu objeto ha sido publicado correctamente.")
+            }
         },
         confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text("Aceptar")
+            if (!isUploading) {
+                TextButton(onClick = if (errorMessage != null) onDismiss else onConfirm) {
+                    Text(if (errorMessage != null) "Cerrar" else "Aceptar")
+                }
+            }
+        },
+        dismissButton = {
+            if (!isUploading && errorMessage == null) {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancelar")
+                }
             }
         },
         shape = RoundedCornerShape(12.dp)
     )
 }
 
+// Funciones de validación
 fun validateName(name: String): String {
     return when {
         name.isEmpty() -> "El nombre es obligatorio"
@@ -777,7 +751,7 @@ fun validateDates(startDate: String, endDate: String): String {
                 val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
                 val start = dateFormat.parse(startDate)
                 val end = dateFormat.parse(endDate)
-                
+
                 if (start != null && end != null && end.before(start)) {
                     "La fecha de fin no puede ser anterior a la fecha de inicio"
                 } else {
@@ -814,7 +788,7 @@ fun vibrateDevice(context: Context) {
         @Suppress("DEPRECATION")
         context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
     }
-    
+
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         vibrator.vibrate(VibrationEffect.createOneShot(200, VibrationEffect.DEFAULT_AMPLITUDE))
     } else {

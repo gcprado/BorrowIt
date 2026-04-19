@@ -10,7 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.navigation.NavController
 import com.pigs.borrowit.control.AuthMode
-import com.pigs.borrowit.data.AuthRepository
+import com.pigs.borrowit.data.repositories.AuthRepository
 import com.pigs.borrowit.presentation.navigation.navigateAndClearStack
 
 @Composable
