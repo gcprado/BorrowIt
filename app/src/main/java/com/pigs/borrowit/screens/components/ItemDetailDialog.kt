@@ -23,8 +23,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
-import com.pigs.borrowit.screens.CommunityItem
+import com.pigs.borrowit.data.model.CommunityItem
 import com.pigs.borrowit.ui.theme.Primary
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @Composable
 fun ItemDetailDialog(
@@ -32,13 +34,17 @@ fun ItemDetailDialog(
     onDismiss: () -> Unit,
     onBorrow: () -> Unit = {}
 ) {
+    val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+    val startStr = dateFormat.format(item.startDate.toDate())
+    val endStr = dateFormat.format(item.endDate.toDate())
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Surface(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxWidth(0.95f)
                 .fillMaxHeight(0.9f)
                 .padding(top = 16.dp),
             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
@@ -98,7 +104,7 @@ fun ItemDetailDialog(
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Lent by ${item.author}",
+                            text = "Lent by ${item.ownerName}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = Primary,
                             fontWeight = FontWeight.Medium
@@ -160,7 +166,7 @@ fun ItemDetailDialog(
                                 color = Color.Gray
                             )
                             Text(
-                                text = "${item.startDate} to ${item.endDate}",
+                                text = "$startStr to $endStr",
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold
                             )

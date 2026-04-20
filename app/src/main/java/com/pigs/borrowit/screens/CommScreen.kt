@@ -62,22 +62,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.pigs.borrowit.data.model.CommunityItem
 import com.pigs.borrowit.screens.components.EditCommDialog
 import com.pigs.borrowit.screens.components.ItemDetailDialog
 import com.pigs.borrowit.ui.theme.Primary
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
-
-data class CommunityItem(
-    val id: String,
-    val name: String,
-    val description: String,
-    val imageUrls: List<String>,
-    val author: String,
-    val condition: String,
-    val startDate: String,
-    val endDate: String
-)
 
 data class CommunityMember(
     val id: String,
@@ -107,26 +97,26 @@ fun CommScreen(
     val itemsInCommunity = remember(currentName) {
         when (currentName) {
             "Mechanics" -> listOf(
-                CommunityItem("m1", "Hydraulic Jack", "Heavy duty 3-ton jack for lifting vehicles.", listOf("file:///android_asset/communities/mechanics/HydraulicJack.jpg"), "Mike Wheeler", "Excellent condition", "2023-11-01", "2023-11-05"),
-                CommunityItem("m2", "Torque Wrench", "Digital torque wrench, very precise.", listOf("file:///android_asset/communities/mechanics/TorqueWrench.jpg"), "Dustin Henderson", "Good condition", "2023-11-10", "2023-11-15"),
-                CommunityItem("m3", "Screwdriver Set", "Set of 20 screwdrivers for all types of screws.", listOf("file:///android_asset/communities/mechanics/ScrewdriverSet.jpg"), "Lucas Sinclair", "New", "2023-11-12", "2023-11-20")
+                CommunityItem(id = "m1", name = "Hydraulic Jack", description = "Heavy duty 3-ton jack for lifting vehicles.", imageUrls = listOf("file:///android_asset/communities/mechanics/HydraulicJack.jpg"), ownerName = "Mike Wheeler", condition = "Excellent condition", startDate = com.google.firebase.Timestamp.now(), endDate = com.google.firebase.Timestamp.now()),
+                CommunityItem(id = "m2", name = "Torque Wrench", description = "Digital torque wrench, very precise.", imageUrls = listOf("file:///android_asset/communities/mechanics/TorqueWrench.jpg"), ownerName = "Dustin Henderson", condition = "Good condition", startDate = com.google.firebase.Timestamp.now(), endDate = com.google.firebase.Timestamp.now()),
+                CommunityItem(id = "m3", name = "Screwdriver Set", description = "Set of 20 screwdrivers for all types of screws.", imageUrls = listOf("file:///android_asset/communities/mechanics/ScrewdriverSet.jpg"), ownerName = "Lucas Sinclair", condition = "New", startDate = com.google.firebase.Timestamp.now(), endDate = com.google.firebase.Timestamp.now())
             )
             "Gardening" -> listOf(
-                CommunityItem("g1", "Lawn Mower", "Electric mower, very quiet and efficient.", listOf("file:///android_asset/communities/gardening/LawnMower.jpg"), "Nancy Wheeler", "Used", "2023-11-06", "2023-11-10"),
-                CommunityItem("g2", "Pruning Shears", "Sharp shears for bushes and small branches.", listOf("file:///android_asset/communities/gardening/PruningShears.jpg"), "Steve Harrington", "Excellent condition", "2023-11-15", "2023-11-18"),
-                CommunityItem("g3", "Garden Rake", "Classic rake for leaves and soil preparation.", listOf("file:///android_asset/communities/gardening/GardenRake.jpg"), "Jonathan Byers", "Good condition", "2023-11-20", "2023-11-25")
+                CommunityItem(id = "g1", name = "Lawn Mower", description = "Electric mower, very quiet and efficient.", imageUrls = listOf("file:///android_asset/communities/gardening/LawnMower.jpg"), ownerName = "Nancy Wheeler", condition = "Used", startDate = com.google.firebase.Timestamp.now(), endDate = com.google.firebase.Timestamp.now()),
+                CommunityItem(id = "g2", name = "Pruning Shears", description = "Sharp shears for bushes and small branches.", imageUrls = listOf("file:///android_asset/communities/gardening/PruningShears.jpg"), ownerName = "Steve Harrington", condition = "Excellent condition", startDate = com.google.firebase.Timestamp.now(), endDate = com.google.firebase.Timestamp.now()),
+                CommunityItem(id = "g3", name = "Garden Rake", description = "Classic rake for leaves and soil preparation.", imageUrls = listOf("file:///android_asset/communities/gardening/GardenRake.jpg"), ownerName = "Jonathan Byers", condition = "Good condition", startDate = com.google.firebase.Timestamp.now(), endDate = com.google.firebase.Timestamp.now())
             )
             "Sports" -> listOf(
-                CommunityItem("s1", "Tennis Racket", "Professional Wilson racket.", listOf("file:///android_asset/communities/sports/TennisRacket.jpg"), "Robin Buckley", "Excellent condition", "2023-11-05", "2023-11-08"),
-                CommunityItem("s2", "Basketball", "Official size indoor/outdoor ball.", listOf("file:///android_asset/communities/sports/Basketball.jpg"), "Billy Hargrove", "Used", "2023-11-10", "2023-11-12")
+                CommunityItem(id = "s1", name = "Tennis Racket", description = "Professional Wilson racket.", imageUrls = listOf("file:///android_asset/communities/sports/TennisRacket.jpg"), ownerName = "Robin Buckley", condition = "Excellent condition", startDate = com.google.firebase.Timestamp.now(), endDate = com.google.firebase.Timestamp.now()),
+                CommunityItem(id = "s2", name = "Basketball", description = "Official size indoor/outdoor ball.", imageUrls = listOf("file:///android_asset/communities/sports/Basketball.jpg"), ownerName = "Billy Hargrove", condition = "Used", startDate = com.google.firebase.Timestamp.now(), endDate = com.google.firebase.Timestamp.now())
             )
             "IT & Computing" -> listOf(
-                CommunityItem("it1", "Mechanical Keyboard", "RGB, Blue switches.", listOf("file:///android_asset/communities/technology/MechanicalKeyboard.jpg"), "Erica Sinclair", "New", "2023-11-20", "2023-11-22"),
-                CommunityItem("it2", "External Hard Drive", "1TB SSD, very fast.", listOf("file:///android_asset/communities/technology/HardDrive.jpg"), "Murray Bauman", "Good condition", "2023-11-25", "2023-11-28")
+                CommunityItem(id = "it1", name = "Mechanical Keyboard", description = "RGB, Blue switches.", imageUrls = listOf("file:///android_asset/communities/technology/MechanicalKeyboard.jpg"), ownerName = "Erica Sinclair", condition = "New", startDate = com.google.firebase.Timestamp.now(), endDate = com.google.firebase.Timestamp.now()),
+                CommunityItem(id = "it2", name = "External Hard Drive", description = "1TB SSD, very fast.", imageUrls = listOf("file:///android_asset/communities/technology/HardDrive.jpg"), ownerName = "Murray Bauman", condition = "Good condition", startDate = com.google.firebase.Timestamp.now(), endDate = com.google.firebase.Timestamp.now())
             )
             "Video Games" -> listOf(
-                CommunityItem("vg1", "Nintendo Switch", "Console with 2 Joy-Cons.", listOf("file:///android_asset/communities/videogames/Switch.jpg"), "Will Byers", "Excellent condition", "2023-12-01", "2023-12-05"),
-                CommunityItem("vg2", "PS5 Controller", "DualSense controller, white.", listOf("file:///android_asset/communities/videogames/PS5Controller.jpg"), "Max Mayfield", "New", "2023-12-10", "2023-12-12")
+                CommunityItem(id = "vg1", name = "Nintendo Switch", description = "Console with 2 Joy-Cons.", imageUrls = listOf("file:///android_asset/communities/videogames/Switch.jpg"), ownerName = "Will Byers", condition = "Excellent condition", startDate = com.google.firebase.Timestamp.now(), endDate = com.google.firebase.Timestamp.now()),
+                CommunityItem(id = "vg2", name = "PS5 Controller", description = "DualSense controller, white.", imageUrls = listOf("file:///android_asset/communities/videogames/PS5Controller.jpg"), ownerName = "Max Mayfield", condition = "New", startDate = com.google.firebase.Timestamp.now(), endDate = com.google.firebase.Timestamp.now())
             )
             else -> emptyList()
         }
@@ -412,7 +402,7 @@ fun ItemCard(item: CommunityItem, onClick: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.size(20.dp).clip(CircleShape).background(Color.LightGray))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = "By ${item.author}", style = MaterialTheme.typography.labelSmall, color = Primary)
+                    Text(text = "By ${item.ownerName}", style = MaterialTheme.typography.labelSmall, color = Primary)
                 }
             }
         }
