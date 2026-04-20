@@ -26,44 +26,20 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.storage.FirebaseStorage
 import com.pigs.borrowit.R
-import com.pigs.borrowit.data.repositories.UserRepository
+import com.pigs.borrowit.control.ProfileViewModel
+import com.pigs.borrowit.presentation.navigation.GraphRoute
 import com.pigs.borrowit.screens.components.MainBottomNav
 import com.pigs.borrowit.ui.theme.Background
 import com.pigs.borrowit.ui.theme.CardBackground
 import com.pigs.borrowit.ui.theme.Primary
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
-import java.net.URLDecoder
-import java.util.UUID
 
-// Funciones auxiliares fuera del Composable para mantenerlo limpio
-
-/**
- * Extrae la ruta del archivo en Firebase Storage a partir de una URL de descarga.
- */
-private fun extractStoragePathFromUrl(url: String): String? {
-    val regex = Regex("/o/(.+?)\\?")
-    val matchResult = regex.find(url)
-    return matchResult?.groupValues?.get(1)?.let {
-        try {
-            URLDecoder.decode(it, "UTF-8")
-        } catch (e: Exception) {
-            null
-        }
-    }
-}
-
-/**
- * Comprime una imagen a un tamaño máximo y calidad JPEG.
- */
 private suspend fun compressImage(
     context: Context,
     uri: Uri,
@@ -93,22 +69,15 @@ private suspend fun compressImage(
 @Composable
 fun ProfileScreen(
     navController: NavController,
-    userRepository: UserRepository = remember { UserRepository() },
-    onLogout: () -> Unit = {},
-    onDeleteAccount: () -> Unit = {}
+    viewModel: ProfileViewModel = viewModel()
 ) {
-    val auth = FirebaseAuth.getInstance()
-    val currentUser = auth.currentUser
-    val uid = currentUser?.uid ?: ""
-    val email = currentUser?.email ?: ""
-
-    val userState by userRepository.getUserFlow(uid).collectAsState(initial = null)
+    val userState by viewModel.userState.collectAsState()
+    val isSaving by viewModel.isSaving.collectAsState()
+    val isUploadingImage by viewModel.isUploadingImage.collectAsState()
+    val snackbarMessage by viewModel.snackbarMessage.collectAsState()
+    val navigateToLogin by viewModel.navigateToLogin.collectAsState()
 
     var username by remember { mutableStateOf("") }
-    var isSaving by remember { mutableStateOf(false) }
-    var isUploadingImage by remember { mutableStateOf(false) }
-    var snackbarMessage by remember { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
     LaunchedEffect(userState) {
@@ -119,76 +88,19 @@ fun ProfileScreen(
         }
     }
 
-    // Función que maneja la subida de imagen (elimina anterior, comprime, sube)
-    fun uploadImageAndUpdateProfile(imageUri: Uri) {
-        if (uid.isEmpty()) return
-        scope.launch {
-            isUploadingImage = true
-            try {
-                // 1. Comprimir imagen
-                val compressedData = compressImage(context, imageUri)
-                if (compressedData == null) {
-                    snackbarMessage = "Error al comprimir la imagen"
-                    return@launch
-                }
-
-                // 2. Eliminar imagen anterior si existe
-                val oldUrl = userState?.profilePicture
-                if (!oldUrl.isNullOrEmpty()) {
-                    val oldPath = extractStoragePathFromUrl(oldUrl)
-                    if (oldPath != null) {
-                        try {
-                            FirebaseStorage.getInstance().reference.child(oldPath).delete().await()
-                        } catch (e: Exception) {
-                            Log.w("ProfileScreen", "No se pudo eliminar imagen anterior: ${e.message}")
-                        }
-                    }
-                }
-
-                // 3. Subir nueva imagen
-                val storageRef = FirebaseStorage.getInstance().reference
-                val fileName = "${UUID.randomUUID()}.jpg"
-                val imageRef = storageRef.child("profile_pictures/${uid}/${fileName}")
-
-                imageRef.putBytes(compressedData).await()
-                val downloadUrl = imageRef.downloadUrl.await().toString()
-
-                // 4. Actualizar Firestore
-                userRepository.updateProfilePicture(uid, downloadUrl)
-                    .onSuccess {
-                        snackbarMessage = "Foto de perfil actualizada"
-                    }
-                    .onFailure {
-                        snackbarMessage = "Error al guardar URL en Firestore"
-                    }
-            } catch (e: Exception) {
-                snackbarMessage = "Error: ${e.localizedMessage}"
-            } finally {
-                isUploadingImage = false
+    LaunchedEffect(navigateToLogin) {
+        if (navigateToLogin) {
+            navController.navigate(GraphRoute.AUTH) {
+                popUpTo(0)
             }
+            viewModel.onNavigatedToLogin()
         }
     }
 
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { uploadImageAndUpdateProfile(it) }
-    }
-
-    fun saveChanges() {
-        if (uid.isNotEmpty() && username.isNotBlank()) {
-            scope.launch {
-                isSaving = true
-                userRepository.updateUsername(uid, username)
-                    .onSuccess {
-                        snackbarMessage = "Nombre de usuario actualizado"
-                    }
-                    .onFailure {
-                        snackbarMessage = "Error al actualizar el nombre"
-                    }
-                isSaving = false
-            }
-        }
+        uri?.let { viewModel.uploadImage(context, it, ::compressImage) }
     }
 
     // UI
@@ -270,7 +182,7 @@ fun ProfileScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = email,
+                        text = viewModel.email,
                         fontSize = 14.sp,
                         color = Color.Black.copy(alpha = 0.7f)
                     )
@@ -311,7 +223,7 @@ fun ProfileScreen(
             ) {
                 Column(modifier = Modifier.padding(24.dp)) {
                     Button(
-                        onClick = { saveChanges() },
+                        onClick = { viewModel.saveUsername(username) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
@@ -336,7 +248,7 @@ fun ProfileScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Button(
-                        onClick = onLogout,
+                        onClick = { viewModel.onLogout() },
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -359,7 +271,7 @@ fun ProfileScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Button(
-                        onClick = onDeleteAccount,
+                        onClick = { viewModel.onDeleteAccount() },
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -389,7 +301,7 @@ fun ProfileScreen(
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 80.dp),
                 action = {
-                    TextButton(onClick = { snackbarMessage = null }) {
+                    TextButton(onClick = { viewModel.clearSnackbar() }) {
                         Text("Dismiss")
                     }
                 }
