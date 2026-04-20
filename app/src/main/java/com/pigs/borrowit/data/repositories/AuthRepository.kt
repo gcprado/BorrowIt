@@ -1,5 +1,8 @@
 package com.pigs.borrowit.data.repositories
 
+import android.content.Context
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.AuthCredential
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -26,7 +29,6 @@ class AuthRepository(
                 if (task.isSuccessful) {
                     val firebaseUser = auth.currentUser
                     if (firebaseUser != null) {
-                        // El UID no se guarda como campo porque ya es el ID del documento
                         val newUser = User(
                             username = username,
                             profilePicture = profilePictureUrl
@@ -46,12 +48,12 @@ class AuthRepository(
             val result = auth.signInWithCredential(credential).await()
             val user = result.user
             if (user != null && result.additionalUserInfo?.isNewUser == true) {
-                // If new user, create profile in Firestore
-                val userData = mapOf(
-                    "username" to (user.displayName ?: "User"),
-                    "profilepicture" to (user.photoUrl?.toString() ?: "")
+                // Sincronizamos con el modelo User para mantener consistencia
+                val newUser = User(
+                    username = user.displayName ?: "User",
+                    profilePicture = user.photoUrl?.toString() ?: ""
                 )
-                usersCollection.document(user.uid).set(userData).await()
+                usersCollection.document(user.uid).set(newUser).await()
             }
             Result.success(Unit)
         } catch (e: Exception) {
@@ -68,5 +70,13 @@ class AuthRepository(
         } catch (e: Exception) { "User" }
     }
 
-    fun logout() { auth.signOut() }
+    fun logout(context: Context) {
+        // 1. Cerrar sesión en Firebase
+        auth.signOut()
+        
+        // 2. Cerrar sesión en Google para que permita elegir cuenta la próxima vez
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).build()
+        val googleSignInClient = GoogleSignIn.getClient(context, gso)
+        googleSignInClient.signOut()
+    }
 }
