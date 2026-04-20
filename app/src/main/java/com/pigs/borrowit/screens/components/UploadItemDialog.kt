@@ -75,6 +75,7 @@ import coil.compose.AsyncImage
 import com.pigs.borrowit.data.model.Availability
 import com.pigs.borrowit.data.model.Item
 import com.pigs.borrowit.data.repositories.ItemRepository
+import com.pigs.borrowit.ui.theme.Primary
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -83,9 +84,9 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UploadItemDialog(
-    userId: String,                     // ID del usuario logueado
+    userId: String,                     // Logged-in user ID
     onDismiss: () -> Unit,
-    onItemUploaded: (String) -> Unit = {} // callback con el ID del documento creado
+    onItemUploaded: (String) -> Unit = {} // callback with the created document ID
 ) {
     var itemName by remember { mutableStateOf("") }
     var itemDescription by remember { mutableStateOf("") }
@@ -103,7 +104,7 @@ fun UploadItemDialog(
     var attemptedSubmit by remember { mutableStateOf(false) }
     var shouldShake by remember { mutableStateOf(false) }
 
-    // Estados para la subida
+    // Upload status states
     var isUploading by remember { mutableStateOf(false) }
     var uploadError by remember { mutableStateOf<String?>(null) }
 
@@ -136,7 +137,7 @@ fun UploadItemDialog(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     SingleLineTextField(
-                        label = "Nombre del item",
+                        label = "Item Name",
                         value = itemName,
                         onValueChange = {
                             itemName = it
@@ -144,7 +145,7 @@ fun UploadItemDialog(
                                 nameError = validateName(it)
                             }
                         },
-                        placeholder = "Nombre del item",
+                        placeholder = "Enter item name",
                         isError = nameError.isNotEmpty(),
                         errorMessage = nameError,
                         isRequired = true
@@ -153,7 +154,7 @@ fun UploadItemDialog(
                     Spacer(modifier = Modifier.height(20.dp))
 
                     TextArea(
-                        label = "Descripción",
+                        label = "Description",
                         value = itemDescription,
                         onValueChange = {
                             itemDescription = it
@@ -161,7 +162,7 @@ fun UploadItemDialog(
                                 descriptionError = validateDescription(it)
                             }
                         },
-                        placeholder = "Descripción breve del item",
+                        placeholder = "Brief description of the item",
                         minLines = 4,
                         maxLines = 6,
                         isError = descriptionError.isNotEmpty(),
@@ -260,8 +261,8 @@ fun UploadItemDialog(
                         uploadError = null
                         try {
                             val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                            val startDateObj = dateFormat.parse(startDate) ?: throw Exception("Fecha inicio inválida")
-                            val endDateObj = dateFormat.parse(endDate) ?: throw Exception("Fecha fin inválida")
+                            val startDateObj = dateFormat.parse(startDate) ?: throw Exception("Invalid start date")
+                            val endDateObj = dateFormat.parse(endDate) ?: throw Exception("Invalid end date")
                             val availability = Availability(startDateObj, endDateObj)
                             val pictureUrl = imageUris.firstOrNull() ?: ""
 
@@ -279,11 +280,11 @@ fun UploadItemDialog(
                                 onItemUploaded(docId)
                                 onDismiss()
                             }.onFailure { e ->
-                                uploadError = e.message ?: "Error desconocido"
+                                uploadError = e.message ?: "Unknown error"
                                 isUploading = false
                             }
                         } catch (e: Exception) {
-                            uploadError = e.message ?: "Error de formato"
+                            uploadError = e.message ?: "Format error"
                             isUploading = false
                         }
                     }
@@ -309,16 +310,17 @@ fun DialogHeader(onDismiss: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "Subir Item",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
+            text = "Upload Item",
+            style = MaterialTheme.typography.headlineMedium.copy(
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF333333)
+            )
         )
         IconButton(onClick = onDismiss) {
             Icon(
                 imageVector = Icons.Default.Close,
-                contentDescription = "Cerrar",
-                tint = MaterialTheme.colorScheme.onSurface
+                contentDescription = "Close",
+                tint = Color.Gray
             )
         }
     }
@@ -422,12 +424,12 @@ fun ConditionSelector(
     onConditionSelected: (String) -> Unit,
     errorMessage: String = ""
 ) {
-    val conditions = listOf("Nuevo", "Como nuevo", "Buen estado", "Usado", "Aceptable")
+    val conditions = listOf("New", "Like New", "Good", "Used", "Fair")
     val isError = errorMessage.isNotEmpty()
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "Condición",
+            text = "Condition",
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
@@ -443,10 +445,10 @@ fun ConditionSelector(
                     selected = selectedCondition == condition,
                     onClick = { onConditionSelected(condition) },
                     label = { Text(condition) },
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(12.dp), // Consistent with SortButton in CommsScreen
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        selectedContainerColor = Primary,
+                        selectedLabelColor = Color.White
                     )
                 )
             }
@@ -478,7 +480,7 @@ fun ImageUploadSection(
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "Imágenes (al menos una)",
+            text = "Images (at least one)",
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
@@ -517,7 +519,7 @@ fun ImageUploadSection(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Eliminar",
+                            contentDescription = "Remove",
                             modifier = Modifier.size(14.dp),
                             tint = MaterialTheme.colorScheme.error
                         )
@@ -540,7 +542,7 @@ fun ImageUploadSection(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
-                        contentDescription = "Agregar imagen",
+                        contentDescription = "Add image",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -592,7 +594,7 @@ fun DateRangeSelector(
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "Disponibilidad",
+            text = "Availability",
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
@@ -606,14 +608,21 @@ fun DateRangeSelector(
                 onClick = { showDatePicker(startDate, onStartDateSelected) },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp)
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                border = BorderStroke(1.dp, if (startDate.isEmpty()) Color.LightGray else Primary)
             ) {
-                Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(16.dp))
+                Icon(
+                    Icons.Default.CalendarToday, 
+                    contentDescription = null, 
+                    modifier = Modifier.size(16.dp),
+                    tint = if (startDate.isEmpty()) Color.Gray else Primary
+                )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = startDate.ifEmpty { "Inicio" },
+                    text = startDate.ifEmpty { "Start" },
                     fontSize = 14.sp,
-                    maxLines = 1
+                    maxLines = 1,
+                    color = if (startDate.isEmpty()) Color.Gray else Primary
                 )
             }
 
@@ -621,14 +630,21 @@ fun DateRangeSelector(
                 onClick = { showDatePicker(endDate, onEndDateSelected) },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp)
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                border = BorderStroke(1.dp, if (endDate.isEmpty()) Color.LightGray else Primary)
             ) {
-                Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(16.dp))
+                Icon(
+                    Icons.Default.CalendarToday, 
+                    contentDescription = null, 
+                    modifier = Modifier.size(16.dp),
+                    tint = if (endDate.isEmpty()) Color.Gray else Primary
+                )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = endDate.ifEmpty { "Fin" },
+                    text = endDate.ifEmpty { "End" },
                     fontSize = 14.sp,
-                    maxLines = 1
+                    maxLines = 1,
+                    color = if (endDate.isEmpty()) Color.Gray else Primary
                 )
             }
         }
@@ -673,11 +689,11 @@ fun PublishButton(
             },
         shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.primary
+            containerColor = Primary
         )
     ) {
         Text(
-            text = "Publicar",
+            text = "Publish",
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold
         )
@@ -695,28 +711,31 @@ fun ConfirmationDialog(
         onDismissRequest = { if (!isUploading) onDismiss() },
         title = {
             Text(
-                text = if (errorMessage != null) "Error" else "¡Publicación exitosa!",
+                text = if (errorMessage != null) "Error" else "Success!",
                 fontWeight = FontWeight.Bold
             )
         },
         text = {
             when {
                 errorMessage != null -> Text(errorMessage)
-                isUploading -> Text("Subiendo objeto...")
-                else -> Text("Tu objeto ha sido publicado correctamente.")
+                isUploading -> Text("Uploading item...")
+                else -> Text("Your item has been published successfully.")
             }
         },
         confirmButton = {
             if (!isUploading) {
                 TextButton(onClick = if (errorMessage != null) onDismiss else onConfirm) {
-                    Text(if (errorMessage != null) "Cerrar" else "Aceptar")
+                    Text(
+                        text = if (errorMessage != null) "Close" else "OK",
+                        color = Primary
+                    )
                 }
             }
         },
         dismissButton = {
             if (!isUploading && errorMessage == null) {
                 TextButton(onClick = onDismiss) {
-                    Text("Cancelar")
+                    Text("Cancel", color = Color.Gray)
                 }
             }
         },
@@ -724,28 +743,28 @@ fun ConfirmationDialog(
     )
 }
 
-// Funciones de validación
+// Validation functions
 fun validateName(name: String): String {
     return when {
-        name.isEmpty() -> "El nombre es obligatorio"
-        name.length < 4 -> "El nombre debe tener al menos 4 caracteres"
-        name.length > 80 -> "El nombre no puede exceder los 80 caracteres"
+        name.isEmpty() -> "Name is required"
+        name.length < 4 -> "Name must be at least 4 characters"
+        name.length > 80 -> "Name cannot exceed 80 characters"
         else -> ""
     }
 }
 
 fun validateDescription(description: String): String {
     return when {
-        description.length > 200 -> "La descripción no puede exceder los 200 caracteres"
+        description.length > 200 -> "Description cannot exceed 200 characters"
         else -> ""
     }
 }
 
 fun validateDates(startDate: String, endDate: String): String {
     return when {
-        startDate.isEmpty() && endDate.isEmpty() -> "Ambas fechas son obligatorias"
-        startDate.isEmpty() -> "La fecha de inicio es obligatoria"
-        endDate.isEmpty() -> "La fecha de fin es obligatoria"
+        startDate.isEmpty() && endDate.isEmpty() -> "Both dates are required"
+        startDate.isEmpty() -> "Start date is required"
+        endDate.isEmpty() -> "End date is required"
         else -> {
             try {
                 val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
@@ -753,12 +772,12 @@ fun validateDates(startDate: String, endDate: String): String {
                 val end = dateFormat.parse(endDate)
 
                 if (start != null && end != null && end.before(start)) {
-                    "La fecha de fin no puede ser anterior a la fecha de inicio"
+                    "End date cannot be before start date"
                 } else {
                     ""
                 }
             } catch (e: Exception) {
-                "Formato de fecha inválido"
+                "Invalid date format"
             }
         }
     }
@@ -766,7 +785,7 @@ fun validateDates(startDate: String, endDate: String): String {
 
 fun validateCondition(condition: String): String {
     return if (condition.isEmpty()) {
-        "Debe seleccionar la condición del item"
+        "Please select the item's condition"
     } else {
         ""
     }
@@ -774,7 +793,7 @@ fun validateCondition(condition: String): String {
 
 fun validateImages(images: List<String>): String {
     return if (images.isEmpty()) {
-        "Debe agregar al menos una imagen"
+        "Please add at least one image"
     } else {
         ""
     }
