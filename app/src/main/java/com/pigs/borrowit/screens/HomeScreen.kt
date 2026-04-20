@@ -24,7 +24,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import coil.compose.rememberAsyncImagePainter
+import com.google.firebase.auth.FirebaseAuth
 import com.pigs.borrowit.R
+import com.pigs.borrowit.data.repositories.UserRepository
 import com.pigs.borrowit.screens.components.ItemDetailDialog
 import com.pigs.borrowit.screens.components.MainBottomNav
 import com.pigs.borrowit.ui.theme.Background
@@ -44,8 +47,16 @@ data class SponsoredAd(
 
 @Composable
 fun HomeScreen(
-    navController: NavController
+    navController: NavController,
+    userRepository: UserRepository = remember { UserRepository() }
 ) {
+    val auth = FirebaseAuth.getInstance()
+    val currentUser = auth.currentUser
+    val uid = currentUser?.uid ?: ""
+
+    // Observer user data
+    val userState by userRepository.getUserFlow(uid).collectAsState(initial = null)
+
     // Recommended item from a community
     val recommendedItem = remember {
         CommunityItem(
@@ -91,7 +102,10 @@ fun HomeScreen(
         ) {
             // Profile Header
             item {
-                ProfileHeader()
+                ProfileHeader(
+                    username = userState?.username ?: "User",
+                    profilePicUrl = userState?.profilePicture ?: ""
+                )
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
@@ -146,7 +160,10 @@ fun HomeScreen(
 }
 
 @Composable
-fun ProfileHeader() {
+fun ProfileHeader(
+    username: String,
+    profilePicUrl: String
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -164,26 +181,38 @@ fun ProfileHeader() {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Image(
-                painter = painterResource(id = R.drawable.profilepicture_default),
-                contentDescription = "Profile",
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(CircleShape)
-                    .border(2.dp, Primary.copy(alpha = 0.5f), CircleShape),
-                contentScale = ContentScale.Crop
-            )
+            if (profilePicUrl.isNotEmpty()) {
+                Image(
+                    painter = rememberAsyncImagePainter(profilePicUrl),
+                    contentDescription = "Profile",
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .border(2.dp, Primary.copy(alpha = 0.5f), CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Image(
+                    painter = painterResource(id = R.drawable.profilepicture_default),
+                    contentDescription = "Profile",
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .border(2.dp, Primary.copy(alpha = 0.5f), CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            }
 
             Spacer(modifier = Modifier.width(16.dp))
 
             Column {
                 Text(
-                    text = "Welcome back,",
+                    text = "Welcome,",
                     fontSize = 14.sp,
                     color = Color.Gray
                 )
                 Text(
-                    text = "John Doe",
+                    text = username,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.Black
