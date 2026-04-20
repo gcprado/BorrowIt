@@ -28,8 +28,11 @@ import coil.compose.rememberAsyncImagePainter
 import com.google.firebase.auth.FirebaseAuth
 import com.pigs.borrowit.R
 import com.pigs.borrowit.data.repositories.UserRepository
+import com.pigs.borrowit.data.model.BorrowRequest
+import com.pigs.borrowit.data.model.CommunityItem
 import com.pigs.borrowit.screens.components.ItemDetailDialog
 import com.pigs.borrowit.screens.components.MainBottomNav
+import com.pigs.borrowit.screens.components.NotificationsDialog
 import com.pigs.borrowit.ui.theme.Background
 import com.pigs.borrowit.ui.theme.CardBackground
 import com.pigs.borrowit.ui.theme.Primary
@@ -64,10 +67,27 @@ fun HomeScreen(
             name = "Nintendo Switch",
             description = "Console with 2 Joy-Cons. Perfect for parties or a weekend of gaming.",
             imageUrls = listOf("file:///android_asset/communities/videogames/Switch.jpg"),
-            author = "Will Byers",
+            ownerName = "Will Byers",
             condition = "Excellent condition",
-            startDate = "2023-12-01",
-            endDate = "2023-12-05"
+            startDate = com.google.firebase.Timestamp.now(),
+            endDate = com.google.firebase.Timestamp.now()
+        )
+    }
+
+    val pendingRequests = remember {
+        mutableStateListOf(
+            BorrowRequest(
+                id = "req1",
+                requesterName = "Dustin Henderson",
+                itemName = "Nintendo Switch",
+                status = "pending"
+            ),
+            BorrowRequest(
+                id = "req2",
+                requesterName = "Lucas Sinclair",
+                itemName = "Hydraulic Jack",
+                status = "pending"
+            )
         )
     }
 
@@ -105,6 +125,7 @@ fun HomeScreen(
                 ProfileHeader(
                     username = userState?.username ?: "User",
                     profilePicUrl = userState?.profilePicture ?: ""
+                    onNotificationClick = { showNotifications = true }
                 )
                 Spacer(modifier = Modifier.height(16.dp))
             }
@@ -156,6 +177,19 @@ fun HomeScreen(
                 onBorrow = { /* Handle borrow logic */ }
             )
         }
+
+        if (showNotifications) {
+            NotificationsDialog(
+                requests = pendingRequests,
+                onDismiss = { showNotifications = false },
+                onAccept = { request: BorrowRequest ->
+                    pendingRequests.remove(request)
+                },
+                onDecline = { request: BorrowRequest ->
+                    pendingRequests.remove(request)
+                }
+            )
+        }
     }
 }
 
@@ -163,6 +197,7 @@ fun HomeScreen(
 fun ProfileHeader(
     username: String,
     profilePicUrl: String
+    onNotificationClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -220,11 +255,11 @@ fun ProfileHeader(
             }
         }
 
-        IconButton(onClick = { }) {
+        IconButton(onClick = onNotificationClick) {
             Icon(
                 painter = painterResource(id = R.drawable.notification_symbol),
                 contentDescription = "Notifications",
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(32.dp),
                 tint = Color.Unspecified
             )
         }
@@ -307,7 +342,7 @@ fun HomeRecommendedCard(
                 Spacer(modifier = Modifier.height(4.dp))
                 
                 Text(
-                    text = "Lent by ${item.author} • Video Games",
+                    text = "Lent by ${item.ownerName} • Video Games",
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
