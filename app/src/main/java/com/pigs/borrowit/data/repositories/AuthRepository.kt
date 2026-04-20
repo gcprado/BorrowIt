@@ -1,5 +1,6 @@
 package com.pigs.borrowit.data.repositories
 
+import com.google.firebase.auth.AuthCredential
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.pigs.borrowit.data.model.User
@@ -38,6 +39,24 @@ class AuthRepository(
                     onResult(false, task.exception?.message)
                 }
             }
+    }
+
+    suspend fun signInWithGoogle(credential: AuthCredential): Result<Unit> {
+        return try {
+            val result = auth.signInWithCredential(credential).await()
+            val user = result.user
+            if (user != null && result.additionalUserInfo?.isNewUser == true) {
+                // If new user, create profile in Firestore
+                val userData = mapOf(
+                    "username" to (user.displayName ?: "User"),
+                    "profilepicture" to (user.photoUrl?.toString() ?: "")
+                )
+                usersCollection.document(user.uid).set(userData).await()
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     fun getCurrentUserId(): String? = auth.currentUser?.uid
