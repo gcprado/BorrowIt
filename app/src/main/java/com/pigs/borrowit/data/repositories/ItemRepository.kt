@@ -12,10 +12,21 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.QuerySnapshot
 import com.google.firebase.firestore.Source
 
+import com.google.firebase.storage.FirebaseStorage
+import java.util.UUID
+
 class ItemRepository(
-    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
+    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
+    private val storage: FirebaseStorage = FirebaseStorage.getInstance()
 ) {
     private val itemsCollection = firestore.collection("items")
+
+    suspend fun uploadImage(imageData: ByteArray): String {
+        val fileName = "${UUID.randomUUID()}.jpg"
+        val imageRef = storage.reference.child("item_images/$fileName")
+        imageRef.putBytes(imageData).await()
+        return imageRef.downloadUrl.await().toString()
+    }
 
     suspend fun migrateAvailabilityField() {
         val snapshot: QuerySnapshot = itemsCollection.get(Source.SERVER).await()

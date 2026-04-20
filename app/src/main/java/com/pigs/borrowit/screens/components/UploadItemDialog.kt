@@ -81,6 +81,9 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
+import android.net.Uri
+import com.pigs.borrowit.utils.ImageUtils
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UploadItemDialog(
@@ -264,14 +267,26 @@ fun UploadItemDialog(
                             val startDateObj = dateFormat.parse(startDate) ?: throw Exception("Invalid start date")
                             val endDateObj = dateFormat.parse(endDate) ?: throw Exception("Invalid end date")
                             val availability = Availability(startDateObj, endDateObj)
-                            val pictureUrl = imageUris.firstOrNull() ?: ""
+                            
+                            // Upload image to Firebase Storage if exists
+                            val localUri = imageUris.firstOrNull()
+                            val finalPictureUrl = if (localUri != null) {
+                                val compressedData = ImageUtils.compressImage(context, Uri.parse(localUri))
+                                if (compressedData != null) {
+                                    repository.uploadImage(compressedData)
+                                } else {
+                                    ""
+                                }
+                            } else {
+                                ""
+                            }
 
                             val newItem = Item(
                                 name = itemName,
                                 description = itemDescription,
                                 owner = userId,
                                 condition = selectedCondition,
-                                picture = pictureUrl,
+                                picture = finalPictureUrl,
                                 availability = availability
                             )
 
