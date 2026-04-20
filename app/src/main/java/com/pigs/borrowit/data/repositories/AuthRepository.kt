@@ -1,8 +1,11 @@
 package com.pigs.borrowit.data.repositories
 
 import android.util.Log
+import com.google.firebase.auth.AuthCredential
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 
 class AuthRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
@@ -29,7 +32,7 @@ class AuthRepository(
         email: String,
         password: String,
         username: String,
-        profilePictureUrl: String = "", // Opcional, puede actualizarse después
+        profilePictureUrl: String = "",
         onResult: (Boolean, String?) -> Unit
     ) {
         auth.createUserWithEmailAndPassword(email, password)
@@ -37,7 +40,6 @@ class AuthRepository(
                 if (task.isSuccessful) {
                     val user = auth.currentUser
                     if (user != null) {
-                        // Crear documento en la colección users
                         val userData = mapOf(
                             "username" to username,
                             "profilepicture" to profilePictureUrl
@@ -49,7 +51,6 @@ class AuthRepository(
                             }
                             .addOnFailureListener { e ->
                                 Log.e("AuthRepository", "Error al crear perfil", e)
-                                // Aún así el registro fue exitoso, pero informamos del error secundario
                                 onResult(true, "Registro exitoso, pero falló la creación del perfil")
                             }
                     } else {
@@ -59,6 +60,24 @@ class AuthRepository(
                     onResult(false, task.exception?.message)
                 }
             }
+    }
+
+    suspend fun signInWithGoogle(credential: AuthCredential): Result<Unit> {
+        return try {
+            val result = auth.signInWithCredential(credential).await()
+            val user = result.user
+            if (user != null && result.additionalUserInfo?.isNewUser == true) {
+                // If new user, create profile in Firestore
+                val userData = mapOf(
+                    "username" to (user.displayName ?: "User"),
+                    "profilepicture" to (user.photoUrl?.toString() ?: "")
+                )
+                usersCollection.document(user.uid).set(userData).await()
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     fun logout() {

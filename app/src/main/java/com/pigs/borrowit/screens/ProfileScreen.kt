@@ -242,6 +242,8 @@ fun ProfileScreen(
                             )
                         } else {
                             Text("Save Changes")
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(Icons.Default.Save, contentDescription = null)
                         }
                     }
 
