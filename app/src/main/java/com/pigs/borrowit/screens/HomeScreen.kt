@@ -22,12 +22,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
-import com.google.firebase.auth.FirebaseAuth
 import com.pigs.borrowit.R
-import com.pigs.borrowit.data.repositories.UserRepository
+import com.pigs.borrowit.control.HomeViewModel
 import com.pigs.borrowit.data.model.BorrowRequest
 import com.pigs.borrowit.data.model.CommunityItem
 import com.pigs.borrowit.screens.components.ItemDetailDialog
@@ -51,14 +51,11 @@ data class SponsoredAd(
 @Composable
 fun HomeScreen(
     navController: NavController,
-    userRepository: UserRepository = remember { UserRepository() }
+    viewModel: HomeViewModel = viewModel()
 ) {
-    val auth = FirebaseAuth.getInstance()
-    val currentUser = auth.currentUser
-    val uid = currentUser?.uid ?: ""
-
-    // Observer user data
-    val userState by userRepository.getUserFlow(uid).collectAsState(initial = null)
+    val userState by viewModel.userState.collectAsState()
+    val showNotifications by viewModel.showNotifications.collectAsState()
+    val pendingRequests = viewModel.pendingRequests
 
     // Recommended item from a community
     val recommendedItem = remember {
@@ -71,23 +68,6 @@ fun HomeScreen(
             condition = "Excellent condition",
             startDate = com.google.firebase.Timestamp.now(),
             endDate = com.google.firebase.Timestamp.now()
-        )
-    }
-
-    val pendingRequests = remember {
-        mutableStateListOf(
-            BorrowRequest(
-                id = "req1",
-                requesterName = "Dustin Henderson",
-                itemName = "Nintendo Switch",
-                status = "pending"
-            ),
-            BorrowRequest(
-                id = "req2",
-                requesterName = "Lucas Sinclair",
-                itemName = "Hydraulic Jack",
-                status = "pending"
-            )
         )
     }
 
@@ -124,8 +104,8 @@ fun HomeScreen(
             item {
                 ProfileHeader(
                     username = userState?.username ?: "User",
-                    profilePicUrl = userState?.profilePicture ?: ""
-                    onNotificationClick = { showNotifications = true }
+                    profilePicUrl = userState?.profilePicture ?: "",
+                    onNotificationClick = { viewModel.setShowNotifications(true) }
                 )
                 Spacer(modifier = Modifier.height(16.dp))
             }
@@ -181,12 +161,12 @@ fun HomeScreen(
         if (showNotifications) {
             NotificationsDialog(
                 requests = pendingRequests,
-                onDismiss = { showNotifications = false },
+                onDismiss = { viewModel.setShowNotifications(false) },
                 onAccept = { request: BorrowRequest ->
-                    pendingRequests.remove(request)
+                    viewModel.acceptRequest(request)
                 },
                 onDecline = { request: BorrowRequest ->
-                    pendingRequests.remove(request)
+                    viewModel.declineRequest(request)
                 }
             )
         }
@@ -196,7 +176,7 @@ fun HomeScreen(
 @Composable
 fun ProfileHeader(
     username: String,
-    profilePicUrl: String
+    profilePicUrl: String,
     onNotificationClick: () -> Unit
 ) {
     Row(
@@ -216,33 +196,27 @@ fun ProfileHeader(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            if (profilePicUrl.isNotEmpty()) {
-                Image(
-                    painter = rememberAsyncImagePainter(profilePicUrl),
-                    contentDescription = "Profile",
-                    modifier = Modifier
-                        .size(52.dp)
-                        .clip(CircleShape)
-                        .border(2.dp, Primary.copy(alpha = 0.5f), CircleShape),
-                    contentScale = ContentScale.Crop
-                )
+            val painter = if (profilePicUrl.isNotEmpty()) {
+                rememberAsyncImagePainter(profilePicUrl)
             } else {
-                Image(
-                    painter = painterResource(id = R.drawable.profilepicture_default),
-                    contentDescription = "Profile",
-                    modifier = Modifier
-                        .size(52.dp)
-                        .clip(CircleShape)
-                        .border(2.dp, Primary.copy(alpha = 0.5f), CircleShape),
-                    contentScale = ContentScale.Crop
-                )
+                painterResource(id = R.drawable.profilepicture_default)
             }
+
+            Image(
+                painter = painter,
+                contentDescription = "Profile",
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(CircleShape)
+                    .border(2.dp, Primary.copy(alpha = 0.5f), CircleShape),
+                contentScale = ContentScale.Crop
+            )
 
             Spacer(modifier = Modifier.width(16.dp))
 
             Column {
                 Text(
-                    text = "Welcome,",
+                    text = "Welcome back,",
                     fontSize = 14.sp,
                     color = Color.Gray
                 )
