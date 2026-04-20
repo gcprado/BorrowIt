@@ -21,7 +21,6 @@ class UserRepository(
             }
             val user = snapshot?.let { doc ->
                 User(
-                    uid = doc.id,
                     username = doc.getString("username") ?: "",
                     profilePicture = doc.getString("profilepicture") ?: ""
                 )
@@ -36,7 +35,6 @@ class UserRepository(
             val doc = usersCollection.document(uid).get().await()
             doc?.let {
                 User(
-                    uid = doc.id,
                     username = doc.getString("username") ?: "",
                     profilePicture = doc.getString("profilepicture") ?: ""
                 )
@@ -55,7 +53,6 @@ class UserRepository(
             }
             val users = snapshot?.documents?.mapNotNull { doc ->
                 User(
-                    uid = doc.id,
                     username = doc.getString("username") ?: "",
                     profilePicture = doc.getString("profilepicture") ?: ""
                 )

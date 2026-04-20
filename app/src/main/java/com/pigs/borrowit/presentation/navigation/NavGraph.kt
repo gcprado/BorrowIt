@@ -74,8 +74,14 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             arguments = listOf(
                 navArgument("name") { type = NavType.StringType },
                 navArgument("description") { type = NavType.StringType },
-                navArgument("bannerUrl") { type = NavType.StringType },
-                navArgument("profileUrl") { type = NavType.StringType }
+                navArgument("bannerUrl") { 
+                    type = NavType.StringType
+                    nullable = true
+                },
+                navArgument("profileUrl") { 
+                    type = NavType.StringType
+                    nullable = true
+                }
             )
         ) { backStackEntry ->
             val name = backStackEntry.arguments?.getString("name") ?: ""
