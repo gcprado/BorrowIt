@@ -20,9 +20,12 @@ class UserRepository(
                 return@addSnapshotListener
             }
             val user = snapshot?.let { doc ->
+                User(
+                    username = doc.getString("username") ?: "",
+                    profilePicture = doc.getString("profilepicture") ?: ""
+                )
                 if (doc.exists()) {
                     User(
-                        uid = doc.id,
                         username = doc.getString("username") ?: "",
                         profilePicture = doc.getString("profilepicture") ?: ""
                     )
@@ -38,7 +41,6 @@ class UserRepository(
             val doc = usersCollection.document(uid).get().await()
             if (doc.exists()) {
                 User(
-                    uid = doc.id,
                     username = doc.getString("username") ?: "",
                     profilePicture = doc.getString("profilepicture") ?: ""
                 )
@@ -57,7 +59,6 @@ class UserRepository(
             }
             val users = snapshot?.documents?.mapNotNull { doc ->
                 User(
-                    uid = doc.id,
                     username = doc.getString("username") ?: "",
                     profilePicture = doc.getString("profilepicture") ?: ""
                 )

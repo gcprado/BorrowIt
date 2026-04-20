@@ -1,6 +1,7 @@
 package com.pigs.borrowit.data.repositories
 
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import com.pigs.borrowit.data.model.Community
 import com.pigs.borrowit.data.model.CommunityItem
 import com.pigs.borrowit.data.model.CommunityMember
@@ -51,6 +52,29 @@ class CommunityRepository {
                 .get().await().toObjects(CommunityMember::class.java)
         } catch (e: Exception) {
             emptyList()
+        }
+    }
+
+    // Fetches communities where the user is the creator
+    // To fetch all communities the user belongs to, we would use a Collection Group query
+    // or store a list of community IDs in the user's document.
+    suspend fun getUserCommunities(userId: String): List<Community> {
+        return try {
+            communitiesRef.whereEqualTo("creatorId", userId)
+                .orderBy("updatedAt", Query.Direction.DESCENDING)
+                .get()
+                .await()
+                .toObjects(Community::class.java)
+        } catch (e: Exception) {
+            // In case of index missing error, fallback to simple query
+            try {
+                communitiesRef.whereEqualTo("creatorId", userId)
+                    .get()
+                    .await()
+                    .toObjects(Community::class.java)
+            } catch (e2: Exception) {
+                emptyList()
+            }
         }
     }
 }

@@ -28,23 +28,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.google.firebase.Timestamp
+import com.pigs.borrowit.data.model.Community
+import com.pigs.borrowit.data.repositories.AuthRepository
+import com.pigs.borrowit.data.repositories.CommunityRepository
 import com.pigs.borrowit.presentation.navigation.Screen
 import com.pigs.borrowit.screens.components.CreateCommDialog
 import com.pigs.borrowit.screens.components.MainBottomNav
+import kotlinx.coroutines.launch
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import java.util.Date
-
-data class Community(
-    val name: String,
-    val description: String,
-    val members: Int,
-    val bannerUrl: String? = null,
-    val profileUrl: String? = null,
-    val bannerColor: Color = Color(0xFFE0E0E0),
-    val createdAt: Date = Date(),
-    val updatedAt: Date = Date()
-)
 
 enum class SortType {
     ALPHABETICAL, CREATION, MODIFICATION
@@ -52,61 +45,33 @@ enum class SortType {
 
 @Composable
 fun CommsScreen(navController: NavController) {
-    val communities = remember {
-        mutableStateListOf(
-            Community(
-                name = "Mechanics",
-                description = "Everything about car repair, tools sharing and engine maintenance.",
-                members = 152,
-                bannerUrl = "file:///android_asset/communities/mechanics/BannerGris.jpg",
-                profileUrl = "file:///android_asset/communities/mechanics/mechanics.jpg",
-                createdAt = Date(System.currentTimeMillis() - 10000000),
-                updatedAt = Date(System.currentTimeMillis() - 5000000)
-            ),
-            Community(
-                name = "Gardening",
-                description = "Share your seeds, tools and tips for a beautiful green garden.",
-                members = 89,
-                bannerUrl = "file:///android_asset/communities/gardening/BannerVerde.jpg",
-                profileUrl = "file:///android_asset/communities/gardening/gardering.jpg",
-                createdAt = Date(System.currentTimeMillis() - 20000000),
-                updatedAt = Date(System.currentTimeMillis() - 10000000)
-            ),
-            Community(
-                name = "Sports",
-                description = "Find partners for football, tennis or share your sports equipment.",
-                members = 214,
-                bannerUrl = "file:///android_asset/communities/sports/BannerAmarillo.jpg",
-                profileUrl = "file:///android_asset/communities/sports/sports.jpg",
-                createdAt = Date(System.currentTimeMillis() - 5000000),
-                updatedAt = Date(System.currentTimeMillis() - 1000000)
-            ),
-            Community(
-                name = "IT & Computing",
-                description = "Tech support, hardware sharing and software development discussions.",
-                members = 342,
-                bannerUrl = "file:///android_asset/communities/technology/BannerAzul.jpg",
-                profileUrl = "file:///android_asset/communities/technology/computing.jpg",
-                createdAt = Date(System.currentTimeMillis() - 15000000),
-                updatedAt = Date(System.currentTimeMillis() - 2000000)
-            ),
-            Community(
-                name = "Video Games",
-                description = "Gaming community. Borrow consoles, trade games and play together.",
-                members = 528,
-                bannerUrl = "file:///android_asset/communities/videogames/BannerMorado.jpg",
-                profileUrl = "file:///android_asset/communities/videogames/videogames.jpg",
-                createdAt = Date(System.currentTimeMillis() - 30000000),
-                updatedAt = Date(System.currentTimeMillis() - 8000000)
-            )
-        )
-    }
-
-    var selectedSort by remember { mutableStateOf(SortType.ALPHABETICAL) }
+    val communityRepository = remember { CommunityRepository() }
+    val authRepository = remember { AuthRepository() }
+    val scope = rememberCoroutineScope()
+    
+    var communities by remember { mutableStateOf<List<Community>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var selectedSort by remember { mutableStateOf(SortType.MODIFICATION) }
     var showCreateDialog by remember { mutableStateOf(false) }
     val gridState = rememberLazyGridState()
 
-    val sortedCommunities = remember(communities.size, selectedSort) {
+    // Fetch communities from Firestore
+    val loadCommunities = {
+        scope.launch {
+            isLoading = true
+            val userId = authRepository.getCurrentUserId()
+            if (userId != null) {
+                communities = communityRepository.getUserCommunities(userId)
+            }
+            isLoading = false
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        loadCommunities()
+    }
+
+    val sortedCommunities = remember(communities, selectedSort) {
         when (selectedSort) {
             SortType.ALPHABETICAL -> communities.sortedBy { it.name.lowercase() }
             SortType.CREATION -> communities.sortedByDescending { it.createdAt }
@@ -116,7 +81,9 @@ fun CommsScreen(navController: NavController) {
 
     // Scroll to top when sorting changes
     LaunchedEffect(selectedSort) {
-        gridState.scrollToItem(0)
+        if (communities.isNotEmpty()) {
+            gridState.scrollToItem(0)
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -163,21 +130,44 @@ fun CommsScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Grid of Communities
-            LazyVerticalGrid(
-                state = gridState,
-                columns = GridCells.Fixed(2),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                items(sortedCommunities, key = { it.name }) { community ->
-                    CommunityCard(community) {
-                        val encodedDescription = URLEncoder.encode(community.description, StandardCharsets.UTF_8.toString())
-                        val encodedBannerUrl = community.bannerUrl?.let { URLEncoder.encode(it, StandardCharsets.UTF_8.toString()) } ?: "null"
-                        val encodedProfileUrl = community.profileUrl?.let { URLEncoder.encode(it, StandardCharsets.UTF_8.toString()) } ?: "null"
-                        
-                        navController.navigate("communityDetail/${community.name}/$encodedDescription/$encodedBannerUrl/$encodedProfileUrl")
+            if (isLoading) {
+                Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Primary)
+                }
+            } else if (communities.isEmpty()) {
+                Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Text("You don't have any communities yet.", color = Color.Gray)
+                }
+            } else {
+                // Grid of Communities
+                LazyVerticalGrid(
+                    state = gridState,
+                    columns = GridCells.Fixed(2),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(sortedCommunities, key = { it.id }) { community ->
+                        CommunityCard(community) {
+                            val encodedName = URLEncoder.encode(community.name, StandardCharsets.UTF_8.toString())
+                            val encodedDescription = URLEncoder.encode(community.description, StandardCharsets.UTF_8.toString())
+                            
+                            // Navegación con Query Parameters opcionales
+                            var route = "communityDetail/$encodedName/$encodedDescription"
+                            val params = mutableListOf<String>()
+                            if (!community.bannerUrl.isNullOrEmpty()) {
+                                params.add("bannerUrl=${URLEncoder.encode(community.bannerUrl, StandardCharsets.UTF_8.toString())}")
+                            }
+                            if (!community.profileUrl.isNullOrEmpty()) {
+                                params.add("profileUrl=${URLEncoder.encode(community.profileUrl, StandardCharsets.UTF_8.toString())}")
+                            }
+                            
+                            if (params.isNotEmpty()) {
+                                route += "?" + params.joinToString("&")
+                            }
+                            
+                            navController.navigate(route)
+                        }
                     }
                 }
             }
@@ -206,16 +196,36 @@ fun CommsScreen(navController: NavController) {
             CreateCommDialog(
                 onDismiss = { showCreateDialog = false },
                 onCreate = { name, desc, banner, profile ->
-                    communities.add(Community(
-                        name = name,
-                        description = desc,
-                        members = 1,
-                        bannerUrl = banner,
-                        profileUrl = profile,
-                        createdAt = Date(),
-                        updatedAt = Date()
-                    ))
-                    showCreateDialog = false
+                    val userId = authRepository.getCurrentUserId() ?: return@CreateCommDialog
+                    showCreateDialog = false // Cerramos el diálogo primero para liberar la UI
+
+                    scope.launch {
+                        try {
+                            // Obtenemos el nombre real del usuario antes de crear
+                            val username = authRepository.getUsername(userId)
+
+                            val newCommunity = Community(
+                                name = name,
+                                description = desc,
+                                bannerUrl = banner ?: "", // Cadena vacía en lugar de null
+                                profileUrl = profile ?: "", // Cadena vacía en lugar de null
+                                creatorId = userId,
+                                createdAt = Timestamp.now(),
+                                updatedAt = Timestamp.now(),
+                                memberCount = 1
+                            )
+
+                            // Operación asíncrona suspendida
+                            communityRepository.createCommunity(newCommunity, username)
+
+                            // Recarga de datos
+                            isLoading = true
+                            communities = communityRepository.getUserCommunities(userId)
+                            isLoading = false
+                        } catch (e: Exception) {
+                            isLoading = false
+                        }
+                    }
                 }
             )
         }
@@ -259,9 +269,9 @@ fun CommunityCard(community: Community, onClick: () -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(80.dp)
-                        .background(community.bannerColor)
+                        .background(Color(0xFFE0E0E0))
                 ) {
-                    if (community.bannerUrl != null) {
+                    if (!community.bannerUrl.isNullOrEmpty()) {
                         AsyncImage(
                             model = community.bannerUrl,
                             contentDescription = null,
@@ -295,7 +305,7 @@ fun CommunityCard(community: Community, onClick: () -> Unit) {
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "${community.members} members",
+                        text = "${community.memberCount} members",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.Gray
                     )
@@ -311,7 +321,7 @@ fun CommunityCard(community: Community, onClick: () -> Unit) {
                     .background(Color.White)
                     .border(2.dp, Color.White, CircleShape)
             ) {
-                if (community.profileUrl != null) {
+                if (!community.profileUrl.isNullOrEmpty()) {
                     AsyncImage(
                         model = community.profileUrl,
                         contentDescription = null,

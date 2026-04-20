@@ -19,28 +19,28 @@ sealed class Screen(
 ) {
     data object Home : Screen(
         route = "home",
-        title = "Inicio",
+        title = "Home",
         icon = Icons.Outlined.Home,
         iconFilled = Icons.Filled.Home
     )
 
     data object Communities : Screen(
         route = "communities",
-        title = "Comunidades",
+        title = "Communities",
         icon = Icons.Outlined.Groups,
         iconFilled = Icons.Filled.Groups
     )
 
     data object Items : Screen(
         route = "items",
-        title = "Inventario",
+        title = "Inventory",
         icon = Icons.Outlined.AddCircleOutline,
         iconFilled = Icons.Filled.AddCircleOutline
     )
 
     data object Profile : Screen(
         route = "profile",
-        title = "Perfil",
+        title = "Profile",
         icon = Icons.Outlined.Person,
         iconFilled = Icons.Filled.Person
     )
@@ -54,14 +54,15 @@ sealed class Screen(
 
     data object SignUp : Screen(
         route = "signup",
-        title = "Registro",
+        title = "Register",
         icon = Icons.Outlined.Person,
         iconFilled = Icons.Filled.Person
     )
 
     data object CommunityDetail : Screen(
-        route = "communityDetail/{name}/{description}/{bannerUrl}/{profileUrl}",
-        title = "Comunidad",
+        // Cambiamos a parámetros de consulta (?) para los campos opcionales
+        route = "communityDetail/{name}/{description}?bannerUrl={bannerUrl}&profileUrl={profileUrl}",
+        title = "Community",
         icon = Icons.Outlined.Person,
         iconFilled = Icons.Filled.Person
     )

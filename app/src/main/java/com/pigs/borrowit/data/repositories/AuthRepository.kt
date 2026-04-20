@@ -1,10 +1,12 @@
 package com.pigs.borrowit.data.repositories
 
-import android.util.Log
+import android.content.Context
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.AuthCredential
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
+import com.pigs.borrowit.data.model.User
 import kotlinx.coroutines.tasks.await
 
 class AuthRepository(
@@ -13,48 +15,27 @@ class AuthRepository(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val usersCollection = firestore.collection("users")
 
-    fun login(
-        email: String,
-        password: String,
-        onResult: (Boolean, String?) -> Unit
-    ) {
+    fun login(email: String, password: String, onResult: (Boolean, String?) -> Unit) {
         auth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    onResult(true, null)
-                } else {
-                    onResult(false, task.exception?.message)
-                }
+                if (task.isSuccessful) onResult(true, null)
+                else onResult(false, task.exception?.message)
             }
     }
 
-    fun register(
-        email: String,
-        password: String,
-        username: String,
-        profilePictureUrl: String = "",
-        onResult: (Boolean, String?) -> Unit
-    ) {
+    fun register(email: String, password: String, username: String, profilePictureUrl: String = "", onResult: (Boolean, String?) -> Unit) {
         auth.createUserWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    val user = auth.currentUser
-                    if (user != null) {
-                        val userData = mapOf(
-                            "username" to username,
-                            "profilepicture" to profilePictureUrl
+                    val firebaseUser = auth.currentUser
+                    if (firebaseUser != null) {
+                        val newUser = User(
+                            username = username,
+                            profilePicture = profilePictureUrl
                         )
-                        usersCollection.document(user.uid)
-                            .set(userData)
-                            .addOnSuccessListener {
-                                onResult(true, null)
-                            }
-                            .addOnFailureListener { e ->
-                                Log.e("AuthRepository", "Error al crear perfil", e)
-                                onResult(true, "Registro exitoso, pero falló la creación del perfil")
-                            }
-                    } else {
-                        onResult(false, "Usuario autenticado pero no encontrado")
+                        usersCollection.document(firebaseUser.uid).set(newUser)
+                            .addOnSuccessListener { onResult(true, null) }
+                            .addOnFailureListener { e -> onResult(true, "Profile creation failed") }
                     }
                 } else {
                     onResult(false, task.exception?.message)
@@ -67,12 +48,12 @@ class AuthRepository(
             val result = auth.signInWithCredential(credential).await()
             val user = result.user
             if (user != null && result.additionalUserInfo?.isNewUser == true) {
-                // If new user, create profile in Firestore
-                val userData = mapOf(
-                    "username" to (user.displayName ?: "User"),
-                    "profilepicture" to (user.photoUrl?.toString() ?: "")
+                // Sincronizamos con el modelo User para mantener consistencia
+                val newUser = User(
+                    username = user.displayName ?: "User",
+                    profilePicture = user.photoUrl?.toString() ?: ""
                 )
-                usersCollection.document(user.uid).set(userData).await()
+                usersCollection.document(user.uid).set(newUser).await()
             }
             Result.success(Unit)
         } catch (e: Exception) {
@@ -80,15 +61,22 @@ class AuthRepository(
         }
     }
 
-    fun logout() {
+    fun getCurrentUserId(): String? = auth.currentUser?.uid
+
+    suspend fun getUsername(userId: String): String {
+        return try {
+            val doc = usersCollection.document(userId).get().await()
+            doc.getString("username") ?: "Unknown User"
+        } catch (e: Exception) { "User" }
+    }
+
+    fun logout(context: Context) {
+        // 1. Cerrar sesión en Firebase
         auth.signOut()
-    }
-
-    fun getCurrentUserId(): String? {
-        return auth.currentUser?.uid
-    }
-
-    fun getCurrentUserEmail(): String? {
-        return auth.currentUser?.email
+        
+        // 2. Cerrar sesión en Google para que permita elegir cuenta la próxima vez
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).build()
+        val googleSignInClient = GoogleSignIn.getClient(context, gso)
+        googleSignInClient.signOut()
     }
 }

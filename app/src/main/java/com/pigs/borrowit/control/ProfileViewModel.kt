@@ -5,6 +5,8 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.storage.FirebaseStorage
 import com.pigs.borrowit.data.model.User
@@ -59,9 +61,16 @@ class ProfileViewModel(
         _snackbarMessage.value = null
     }
 
-    fun onLogout() {
+    fun onLogout(context: Context) {
+        // 1. Firebase Sign out
         auth.signOut()
-        _navigateToLogin.value = true
+        
+        // 2. Google Sign out (para permitir cambiar de cuenta)
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).build()
+        val googleSignInClient = GoogleSignIn.getClient(context, gso)
+        googleSignInClient.signOut().addOnCompleteListener {
+            _navigateToLogin.value = true
+        }
     }
 
     fun onDeleteAccount() {
