@@ -24,6 +24,12 @@ class UserRepository(
                     username = doc.getString("username") ?: "",
                     profilePicture = doc.getString("profilepicture") ?: ""
                 )
+                if (doc.exists()) {
+                    User(
+                        username = doc.getString("username") ?: "",
+                        profilePicture = doc.getString("profilepicture") ?: ""
+                    )
+                } else null
             }
             trySend(user)
         }
@@ -33,12 +39,12 @@ class UserRepository(
     suspend fun getUser(uid: String): User? {
         return try {
             val doc = usersCollection.document(uid).get().await()
-            doc?.let {
+            if (doc.exists()) {
                 User(
                     username = doc.getString("username") ?: "",
                     profilePicture = doc.getString("profilepicture") ?: ""
                 )
-            }
+            } else null
         } catch (e: Exception) {
             Log.e("UserRepository", "Error al obtener usuario $uid", e)
             null
@@ -87,6 +93,15 @@ class UserRepository(
     suspend fun updateProfilePicture(uid: String, pictureUrl: String): Result<Unit> {
         return try {
             usersCollection.document(uid).update("profilepicture", pictureUrl).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteUserData(uid: String): Result<Unit> {
+        return try {
+            usersCollection.document(uid).delete().await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

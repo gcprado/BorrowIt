@@ -22,9 +22,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import coil.compose.rememberAsyncImagePainter
 import com.pigs.borrowit.R
+import com.pigs.borrowit.control.HomeViewModel
 import com.pigs.borrowit.data.model.BorrowRequest
 import com.pigs.borrowit.data.model.CommunityItem
 import com.pigs.borrowit.screens.components.ItemDetailDialog
@@ -47,8 +50,13 @@ data class SponsoredAd(
 
 @Composable
 fun HomeScreen(
-    navController: NavController
+    navController: NavController,
+    viewModel: HomeViewModel = viewModel()
 ) {
+    val userState by viewModel.userState.collectAsState()
+    val showNotifications by viewModel.showNotifications.collectAsState()
+    val pendingRequests = viewModel.pendingRequests
+
     // Recommended item from a community
     val recommendedItem = remember {
         CommunityItem(
@@ -60,23 +68,6 @@ fun HomeScreen(
             condition = "Excellent condition",
             startDate = com.google.firebase.Timestamp.now(),
             endDate = com.google.firebase.Timestamp.now()
-        )
-    }
-
-    val pendingRequests = remember {
-        mutableStateListOf(
-            BorrowRequest(
-                id = "req1",
-                requesterName = "Dustin Henderson",
-                itemName = "Nintendo Switch",
-                status = "pending"
-            ),
-            BorrowRequest(
-                id = "req2",
-                requesterName = "Lucas Sinclair",
-                itemName = "Hydraulic Jack",
-                status = "pending"
-            )
         )
     }
 
@@ -102,7 +93,6 @@ fun HomeScreen(
     )
 
     var selectedItem by remember { mutableStateOf<CommunityItem?>(null) }
-    var showNotifications by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize().background(Background)) {
         LazyColumn(
@@ -113,7 +103,9 @@ fun HomeScreen(
             // Profile Header
             item {
                 ProfileHeader(
-                    onNotificationClick = { showNotifications = true }
+                    username = userState?.username ?: "User",
+                    profilePicUrl = userState?.profilePicture ?: "",
+                    onNotificationClick = { viewModel.setShowNotifications(true) }
                 )
                 Spacer(modifier = Modifier.height(16.dp))
             }
@@ -169,12 +161,12 @@ fun HomeScreen(
         if (showNotifications) {
             NotificationsDialog(
                 requests = pendingRequests,
-                onDismiss = { showNotifications = false },
+                onDismiss = { viewModel.setShowNotifications(false) },
                 onAccept = { request: BorrowRequest ->
-                    pendingRequests.remove(request)
+                    viewModel.acceptRequest(request)
                 },
                 onDecline = { request: BorrowRequest ->
-                    pendingRequests.remove(request)
+                    viewModel.declineRequest(request)
                 }
             )
         }
@@ -183,6 +175,8 @@ fun HomeScreen(
 
 @Composable
 fun ProfileHeader(
+    username: String,
+    profilePicUrl: String,
     onNotificationClick: () -> Unit
 ) {
     Row(
@@ -202,8 +196,14 @@ fun ProfileHeader(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            val painter = if (profilePicUrl.isNotEmpty()) {
+                rememberAsyncImagePainter(profilePicUrl)
+            } else {
+                painterResource(id = R.drawable.profilepicture_default)
+            }
+
             Image(
-                painter = painterResource(id = R.drawable.profilepicture_default),
+                painter = painter,
                 contentDescription = "Profile",
                 modifier = Modifier
                     .size(52.dp)
@@ -221,7 +221,7 @@ fun ProfileHeader(
                     color = Color.Gray
                 )
                 Text(
-                    text = "John Doe",
+                    text = username,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.Black
