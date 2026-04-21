@@ -1,10 +1,6 @@
 package com.pigs.borrowit.screens
 
-import android.content.Context
-import android.graphics.Bitmap
 import android.net.Uri
-import android.provider.MediaStore
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -24,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -36,10 +33,6 @@ import com.pigs.borrowit.screens.components.MainBottomNav
 import com.pigs.borrowit.ui.theme.Background
 import com.pigs.borrowit.ui.theme.CardBackground
 import com.pigs.borrowit.ui.theme.Primary
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.io.ByteArrayOutputStream
-
 import com.pigs.borrowit.utils.ImageUtils
 
 @Composable
@@ -54,6 +47,7 @@ fun ProfileScreen(
     val navigateToLogin by viewModel.navigateToLogin.collectAsState()
 
     var username by remember { mutableStateOf("") }
+    var showDeleteDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     LaunchedEffect(userState) {
@@ -77,6 +71,41 @@ fun ProfileScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let { viewModel.uploadImage(context, it, ImageUtils::compressImage) }
+    }
+
+    // Diálogo de confirmación para eliminar cuenta
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { 
+                Text(
+                    text = "Delete Account",
+                    fontWeight = FontWeight.Bold
+                ) 
+            },
+            text = { 
+                Text("This action is permanent and cannot be undone. All your communities and shared items will be lost. Are you sure you want to proceed?") 
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteDialog = false
+                        viewModel.onDeleteAccount()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF2B8B5)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Delete Permanently", color = Color.Black)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel", color = Primary)
+                }
+            },
+            shape = RoundedCornerShape(24.dp),
+            containerColor = CardBackground
+        )
     }
 
     // UI
@@ -249,7 +278,7 @@ fun ProfileScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Button(
-                        onClick = { viewModel.onDeleteAccount() },
+                        onClick = { showDeleteDialog = true },
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .fillMaxWidth()
