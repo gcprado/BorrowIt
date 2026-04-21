@@ -12,6 +12,9 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,6 +27,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.pigs.borrowit.data.model.Item
+import com.pigs.borrowit.data.repositories.UserRepository
 import com.pigs.borrowit.ui.theme.Primary
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -37,6 +41,9 @@ fun ItemDetailDialog(
     val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
     val startStr = dateFormat.format(item.availability.start)
     val endStr = dateFormat.format(item.availability.end)
+
+    val userRepository = remember { UserRepository() }
+    val ownerState by userRepository.getUserFlow(item.owner).collectAsState(initial = null)
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -100,11 +107,20 @@ fun ItemDetailDialog(
                                 .background(Color.LightGray),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
+                            if (ownerState?.profilePicture?.isNotEmpty() == true) {
+                                AsyncImage(
+                                    model = ownerState?.profilePicture,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
+                            }
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Lent by ${item.owner}",
+                            text = "Lent by ${ownerState?.username ?: item.owner}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = Primary,
                             fontWeight = FontWeight.Medium
