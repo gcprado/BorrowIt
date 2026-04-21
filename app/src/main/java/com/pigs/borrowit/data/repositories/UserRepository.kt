@@ -19,17 +19,13 @@ class UserRepository(
                 close(error)
                 return@addSnapshotListener
             }
-            val user = snapshot?.let { doc ->
+            val user = if (snapshot != null && snapshot.exists()) {
                 User(
-                    username = doc.getString("username") ?: "",
-                    profilePicture = doc.getString("profilepicture") ?: ""
+                    username = snapshot.getString("username") ?: "",
+                    profilePicture = snapshot.getString("profilePicture") ?: snapshot.getString("profilepicture") ?: ""
                 )
-                if (doc.exists()) {
-                    User(
-                        username = doc.getString("username") ?: "",
-                        profilePicture = doc.getString("profilepicture") ?: ""
-                    )
-                } else null
+            } else {
+                null
             }
             trySend(user)
         }
@@ -42,11 +38,11 @@ class UserRepository(
             if (doc.exists()) {
                 User(
                     username = doc.getString("username") ?: "",
-                    profilePicture = doc.getString("profilepicture") ?: ""
+                    profilePicture = doc.getString("profilePicture") ?: doc.getString("profilepicture") ?: ""
                 )
             } else null
         } catch (e: Exception) {
-            Log.e("UserRepository", "Error al obtener usuario $uid", e)
+            Log.e("UserRepository", "Error getting user $uid", e)
             null
         }
     }
@@ -60,7 +56,7 @@ class UserRepository(
             val users = snapshot?.documents?.mapNotNull { doc ->
                 User(
                     username = doc.getString("username") ?: "",
-                    profilePicture = doc.getString("profilepicture") ?: ""
+                    profilePicture = doc.getString("profilePicture") ?: doc.getString("profilepicture") ?: ""
                 )
             } ?: emptyList()
             trySend(users)
@@ -72,7 +68,7 @@ class UserRepository(
         return try {
             val userMap = mapOf(
                 "username" to username,
-                "profilepicture" to profilePicture
+                "profilePicture" to profilePicture
             )
             usersCollection.document(uid).set(userMap).await()
             Result.success(Unit)
@@ -92,7 +88,7 @@ class UserRepository(
 
     suspend fun updateProfilePicture(uid: String, pictureUrl: String): Result<Unit> {
         return try {
-            usersCollection.document(uid).update("profilepicture", pictureUrl).await()
+            usersCollection.document(uid).update("profilePicture", pictureUrl).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
