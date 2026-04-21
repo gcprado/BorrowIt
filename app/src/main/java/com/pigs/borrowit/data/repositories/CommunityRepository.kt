@@ -1,5 +1,6 @@
 package com.pigs.borrowit.data.repositories
 
+import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.pigs.borrowit.data.model.Community
@@ -46,6 +47,34 @@ class CommunityRepository {
         }
     }
 
+    suspend fun addMemberToCommunity(communityId: String, userId: String, userName: String): Result<Unit> {
+        return try {
+            val memberRef = communitiesRef.document(communityId).collection("members").document(userId)
+            val memberDoc = memberRef.get().await()
+            
+            if (memberDoc.exists()) {
+                return Result.success(Unit) // Already a member
+            }
+
+            db.runTransaction { transaction ->
+                val commRef = communitiesRef.document(communityId)
+                val snapshot = transaction.get(commRef)
+                val currentCount = snapshot.getLong("memberCount") ?: 0
+                
+                transaction.update(commRef, "memberCount", currentCount + 1)
+                transaction.set(memberRef, CommunityMember(
+                    userId = userId,
+                    userName = userName,
+                    role = "member"
+                ))
+            }.await()
+            
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun addCommunityItem(communityId: String, item: CommunityItem): Result<String> {
         return try {
             val docRef = communitiesRef.document(communityId).collection("communityItems").document()
@@ -66,27 +95,39 @@ class CommunityRepository {
         }
     }
 
-    // Fetches communities where the user is the creator
-    // To fetch all communities the user belongs to, we would use a Collection Group query
-    // or store a list of community IDs in the user's document.
     suspend fun getUserCommunities(userId: String): List<Community> {
-        return try {
-            communitiesRef.whereEqualTo("creatorId", userId)
-                .orderBy("updatedAt", Query.Direction.DESCENDING)
+        val result = mutableSetOf<Community>()
+        try {
+            // 1. First fetch communities where user is the creator (always works)
+            val createdSnapshot = communitiesRef.whereEqualTo("creatorId", userId).get().await()
+            result.addAll(createdSnapshot.toObjects(Community::class.java))
+        } catch (e: Exception) {
+            Log.e("CommunityRepository", "Error fetching created communities", e)
+        }
+
+        try {
+            // 2. Then fetch communities where user is a member (requires collectionGroup index)
+            val memberships = db.collectionGroup("members")
+                .whereEqualTo("userId", userId)
                 .get()
                 .await()
-                .toObjects(Community::class.java)
-        } catch (e: Exception) {
-            // In case of index missing error, fallback to simple query
-            try {
-                communitiesRef.whereEqualTo("creatorId", userId)
-                    .get()
-                    .await()
-                    .toObjects(Community::class.java)
-            } catch (e2: Exception) {
-                emptyList()
+            
+            val communityIds = memberships.documents.mapNotNull { it.reference.parent.parent?.id }
+            val existingIds = result.map { it.id }.toSet()
+            val missingIds = communityIds.filter { it !in existingIds }
+            
+            if (missingIds.isNotEmpty()) {
+                missingIds.chunked(10).forEach { chunk ->
+                    val snapshot = communitiesRef.whereIn("__name__", chunk).get().await()
+                    result.addAll(snapshot.toObjects(Community::class.java))
+                }
             }
+        } catch (e: Exception) {
+            // This might fail if the Collection Group index hasn't been created yet in the Firebase Console
+            Log.e("CommunityRepository", "Error fetching membership communities (check if index is created)", e)
         }
+        
+        return result.toList().sortedByDescending { it.updatedAt }
     }
 
     suspend fun getCommunity(communityId: String): Community? {
