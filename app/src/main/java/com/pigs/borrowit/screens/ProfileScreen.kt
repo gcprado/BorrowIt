@@ -6,10 +6,15 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,22 +22,28 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import coil.compose.rememberAsyncImagePainter
+import coil.compose.AsyncImage
 import com.pigs.borrowit.R
 import com.pigs.borrowit.control.ProfileViewModel
 import com.pigs.borrowit.presentation.navigation.GraphRoute
+import com.pigs.borrowit.presentation.navigation.Screen
+import com.pigs.borrowit.screens.components.HistoryDialog
 import com.pigs.borrowit.screens.components.MainBottomNav
 import com.pigs.borrowit.ui.theme.Background
 import com.pigs.borrowit.ui.theme.CardBackground
 import com.pigs.borrowit.ui.theme.Primary
+import com.pigs.borrowit.ui.theme.PrimaryDark
+import com.pigs.borrowit.ui.theme.PrimaryLight
 import com.pigs.borrowit.utils.ImageUtils
 
 @Composable
@@ -47,8 +58,9 @@ fun ProfileScreen(
     val navigateToLogin by viewModel.navigateToLogin.collectAsState()
 
     var username by remember { mutableStateOf("") }
-    var showDeleteDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val scrollState = rememberScrollState()
+    var showHistory by remember { mutableStateOf(false) }
 
     LaunchedEffect(userState) {
         userState?.let { user ->
@@ -73,232 +85,174 @@ fun ProfileScreen(
         uri?.let { viewModel.uploadImage(context, it, ImageUtils::compressImage) }
     }
 
-    // Diálogo de confirmación para eliminar cuenta
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { 
-                Text(
-                    text = "Delete Account",
-                    fontWeight = FontWeight.Bold
-                ) 
-            },
-            text = { 
-                Text("This action is permanent and cannot be undone. All your communities and shared items will be lost. Are you sure you want to proceed?") 
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showDeleteDialog = false
-                        viewModel.onDeleteAccount()
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF2B8B5)),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Delete Permanently", color = Color.Black)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel", color = Primary)
-                }
-            },
-            shape = RoundedCornerShape(24.dp),
-            containerColor = CardBackground
-        )
-    }
-
-    // UI
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().background(Background)) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Background),
+                .verticalScroll(scrollState)
+                .padding(horizontal = 24.dp, vertical = 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(80.dp))
+            Text(
+                text = "My Profile",
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = PrimaryDark
+                ),
+                modifier = Modifier.align(Alignment.Start)
+            )
 
-            // Card de perfil
-            Surface(
-                color = Primary,
-                shape = RoundedCornerShape(24.dp),
-                tonalElevation = 4.dp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Profile Picture Section
+            Box(
+                modifier = Modifier.size(140.dp),
+                contentAlignment = Alignment.BottomEnd
             ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                val profilePicUrl = userState?.profilePicture ?: ""
+
+                Surface(
+                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                    shape = CircleShape,
+                    color = PrimaryLight,
+                    border = BorderStroke(4.dp, Color.White),
+                    shadowElevation = 4.dp
                 ) {
-                    Box(
-                        modifier = Modifier.size(120.dp),
-                        contentAlignment = Alignment.BottomEnd
-                    ) {
-                        val profilePicUrl = userState?.profilePicture ?: ""
-
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape),
-                            shape = CircleShape,
-                            color = Color.Transparent,
-                            border = BorderStroke(2.dp, Color.LightGray)
-                        ) {
-                            if (profilePicUrl.isNotEmpty()) {
-                                Image(
-                                    painter = rememberAsyncImagePainter(profilePicUrl),
-                                    contentDescription = "Profile Image",
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Image(
-                                    painter = painterResource(id = R.drawable.profilepicture_default),
-                                    contentDescription = "Default Profile Image",
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-                        }
-
-                        FloatingActionButton(
-                            onClick = { 
-                                if (!isUploadingImage) {
-                                    galleryLauncher.launch("image/*")
-                                }
-                            },
-                            modifier = Modifier.size(36.dp),
-                            containerColor = Color.White,
-                            contentColor = Color.Black
-                        ) {
-                            if (isUploadingImage) {
-                                CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                            } else {
-                                Icon(Icons.Default.Edit, contentDescription = "Change Photo")
-                            }
-                        }
+                    if (profilePicUrl.isNotEmpty()) {
+                        AsyncImage(
+                            model = profilePicUrl,
+                            contentDescription = "Profile Image",
+                            modifier = Modifier.fillMaxSize().clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Image(
+                            painter = painterResource(id = R.drawable.profilepicture_default),
+                            contentDescription = "Default Profile Image",
+                            modifier = Modifier.fillMaxSize().clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
                     }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = viewModel.email,
-                        fontSize = 14.sp,
-                        color = Color.Black.copy(alpha = 0.7f)
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    OutlinedTextField(
-                        value = username,
-                        onValueChange = { username = it },
-                        placeholder = { Text("Enter your username") },
-                        textStyle = LocalTextStyle.current.copy(fontSize = 16.sp),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isSaving,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White,
-                            focusedBorderColor = Color.Gray,
-                            unfocusedBorderColor = Primary,
-                            cursorColor = Primary,
-                            focusedLabelColor = Primary
-                        )
-                    )
                 }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Card de botones
-            Surface(
-                color = CardBackground,
-                shape = RoundedCornerShape(24.dp),
-                tonalElevation = 4.dp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            ) {
-                Column(modifier = Modifier.padding(24.dp)) {
-                    Button(
-                        onClick = { viewModel.saveUsername(username) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        enabled = !isSaving && username.isNotBlank(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Primary,
-                            contentColor = Color.Black
-                        )
-                    ) {
-                        if (isSaving) {
+                Surface(
+                    onClick = { if (!isUploadingImage) galleryLauncher.launch("image/*") },
+                    shape = CircleShape,
+                    color = Primary,
+                    modifier = Modifier
+                        .size(42.dp)
+                        .border(2.dp, Color.White, CircleShape),
+                    shadowElevation = 6.dp
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        if (isUploadingImage) {
                             CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                color = Color.Black,
+                                modifier = Modifier.size(20.dp),
+                                color = Color.White,
                                 strokeWidth = 2.dp
                             )
                         } else {
-                            Text("Save Changes")
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Icon(Icons.Default.Save, contentDescription = null)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Button(
-                        onClick = { viewModel.onLogout(context) },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFE5D1B0),
-                            contentColor = Color.Black
-                        )
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("Log Out")
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Icon(Icons.Default.Logout, contentDescription = null)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Button(
-                        onClick = { showDeleteDialog = true },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFF2B8B5),
-                            contentColor = Color.Black
-                        )
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("Delete Account")
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Icon(Icons.Default.Delete, contentDescription = null)
+                            Icon(
+                                imageVector = Icons.Default.CameraAlt,
+                                contentDescription = "Change Photo",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Username Editable Field
+            OutlinedTextField(
+                value = username,
+                onValueChange = { username = it },
+                placeholder = { Text("Enter your username") },
+                textStyle = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                ),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(0.85f),
+                enabled = !isSaving,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Primary,
+                    unfocusedBorderColor = Color.Transparent,
+                    focusedContainerColor = Color.White.copy(alpha = 0.5f),
+                    unfocusedContainerColor = Color.Transparent
+                )
+            )
+
+            Text(
+                text = viewModel.email,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Static Location
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.LocationOn,
+                    contentDescription = null,
+                    tint = Primary,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "Madrid, Spain",
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                    color = PrimaryDark
+                )
+            }
+
+            Spacer(modifier = Modifier.height(40.dp))
+
+            // Options List
+            ProfileOption(
+                icon = Icons.Default.Inventory2,
+                title = "Manage items",
+                onClick = { navController.navigate(Screen.ManageItems.route) }
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            ProfileOption(
+                icon = Icons.Default.History,
+                title = "History",
+                onClick = { showHistory = true }
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            ProfileOption(
+                icon = Icons.Default.Save,
+                title = "Save changes",
+                onClick = { viewModel.saveUsername(username) },
+                isLoading = isSaving
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            ProfileOption(
+                icon = Icons.AutoMirrored.Filled.Logout,
+                title = "Log out",
+                onClick = { viewModel.onLogout(context) }
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            ProfileOption(
+                icon = Icons.Default.DeleteForever,
+                title = "Delete account",
+                onClick = { viewModel.onDeleteAccount() },
+                color = Color(0xFFD32F2F)
+            )
+
+            Spacer(modifier = Modifier.height(100.dp))
         }
 
         // Snackbar
@@ -306,17 +260,79 @@ fun ProfileScreen(
             Snackbar(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 80.dp),
+                    .padding(bottom = 90.dp)
+                    .padding(horizontal = 16.dp),
                 action = {
                     TextButton(onClick = { viewModel.clearSnackbar() }) {
-                        Text("Dismiss")
+                        Text("Dismiss", color = Primary)
                     }
-                }
+                },
+                containerColor = Color(0xFF333333),
+                contentColor = Color.White
             ) {
                 Text(message)
             }
         }
 
         MainBottomNav(navController, modifier = Modifier.align(Alignment.BottomCenter))
+
+        if (showHistory) {
+            HistoryDialog(onDismiss = { showHistory = false })
+        }
+    }
+}
+
+@Composable
+private fun ProfileOption(
+    icon: ImageVector,
+    title: String,
+    onClick: () -> Unit,
+    color: Color = Color.Black,
+    isLoading: Boolean = false
+) {
+    Surface(
+        onClick = if (isLoading) ({}) else onClick,
+        color = CardBackground,
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(64.dp),
+        tonalElevation = 2.dp,
+        shadowElevation = 2.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = Primary,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = if (color == Color.Black) Primary else color,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    color = color
+                ),
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = Color.Gray.copy(alpha = 0.3f),
+                modifier = Modifier.size(20.dp)
+            )
+        }
     }
 }
