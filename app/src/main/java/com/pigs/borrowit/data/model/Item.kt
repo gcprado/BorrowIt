@@ -15,12 +15,14 @@ data class Availability(
 }
 
 data class Item(
+    val id: String = "",
     val name: String = "",
     val description: String = "",
     val owner: String = "",
     val condition: String = "",
     val picture: String = "",
-    val availability: Availability = Availability()
+    val availability: Availability = Availability(),
+    val communityId: String = ""
 ) {
     // Convertir a mapa para Firestore
     fun toMap(): Map<String, Any> = mapOf(
@@ -32,6 +34,7 @@ data class Item(
         "availability" to mapOf(
             "start" to Timestamp(availability.start),
             "end" to Timestamp(availability.end)
-        )
+        ),
+        "communityId" to communityId
     )
 }

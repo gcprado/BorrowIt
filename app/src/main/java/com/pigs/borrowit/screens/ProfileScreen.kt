@@ -40,31 +40,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 
-private suspend fun compressImage(
-    context: Context,
-    uri: Uri,
-    maxWidth: Int = 1024,
-    quality: Int = 80
-): ByteArray? {
-    return withContext(Dispatchers.IO) {
-        try {
-            val bitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
-            val scaledBitmap = if (bitmap.width > maxWidth) {
-                val scale = maxWidth.toFloat() / bitmap.width
-                val newHeight = (bitmap.height * scale).toInt()
-                Bitmap.createScaledBitmap(bitmap, maxWidth, newHeight, true)
-            } else {
-                bitmap
-            }
-            val outputStream = ByteArrayOutputStream()
-            scaledBitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
-            outputStream.toByteArray()
-        } catch (e: Exception) {
-            Log.e("ProfileScreen", "Error comprimiendo imagen", e)
-            null
-        }
-    }
-}
+import com.pigs.borrowit.utils.ImageUtils
 
 @Composable
 fun ProfileScreen(
@@ -100,7 +76,7 @@ fun ProfileScreen(
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { viewModel.uploadImage(context, it, ::compressImage) }
+        uri?.let { viewModel.uploadImage(context, it, ImageUtils::compressImage) }
     }
 
     // UI

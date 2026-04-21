@@ -23,20 +23,20 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
-import com.pigs.borrowit.data.model.CommunityItem
+import com.pigs.borrowit.data.model.Item
 import com.pigs.borrowit.ui.theme.Primary
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 @Composable
 fun ItemDetailDialog(
-    item: CommunityItem,
+    item: Item,
     onDismiss: () -> Unit,
     onBorrow: () -> Unit = {}
 ) {
     val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-    val startStr = dateFormat.format(item.startDate.toDate())
-    val endStr = dateFormat.format(item.endDate.toDate())
+    val startStr = dateFormat.format(item.availability.start)
+    val endStr = dateFormat.format(item.availability.end)
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -71,7 +71,7 @@ fun ItemDetailDialog(
                 ) {
                     // Image
                     AsyncImage(
-                        model = item.imageUrls.firstOrNull(),
+                        model = item.picture,
                         contentDescription = item.name,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -104,7 +104,7 @@ fun ItemDetailDialog(
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Lent by ${item.ownerName}",
+                            text = "Lent by ${item.owner}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = Primary,
                             fontWeight = FontWeight.Medium

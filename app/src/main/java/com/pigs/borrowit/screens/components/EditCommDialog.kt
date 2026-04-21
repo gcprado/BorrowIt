@@ -172,7 +172,7 @@ fun EditCommDialog(
                             .clickable { bannerLauncher.launch("image/*") },
                         contentAlignment = Alignment.Center
                     ) {
-                        if (bannerImageUri != null && bannerImageUri != "null") {
+                        if (!bannerImageUri.isNullOrEmpty() && bannerImageUri != "null") {
                             AsyncImage(
                                 model = bannerImageUri,
                                 contentDescription = null,
@@ -202,7 +202,7 @@ fun EditCommDialog(
                                 .clickable { profileLauncher.launch("image/*") },
                             contentAlignment = Alignment.Center
                         ) {
-                            if (profileImageUri != null && profileImageUri != "null") {
+                            if (!profileImageUri.isNullOrEmpty() && profileImageUri != "null") {
                                 AsyncImage(
                                     model = profileImageUri,
                                     contentDescription = null,

@@ -39,6 +39,10 @@ import kotlinx.coroutines.launch
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
+import android.net.Uri
+import com.pigs.borrowit.utils.ImageUtils
+import androidx.compose.ui.platform.LocalContext
+
 enum class SortType {
     ALPHABETICAL, CREATION, MODIFICATION
 }
@@ -54,6 +58,8 @@ fun CommsScreen(navController: NavController) {
     var selectedSort by remember { mutableStateOf(SortType.MODIFICATION) }
     var showCreateDialog by remember { mutableStateOf(false) }
     val gridState = rememberLazyGridState()
+
+    val context = LocalContext.current
 
     // Fetch communities from Firestore
     val loadCommunities = {
@@ -149,11 +155,12 @@ fun CommsScreen(navController: NavController) {
                 ) {
                     items(sortedCommunities, key = { it.id }) { community ->
                         CommunityCard(community) {
+                            val encodedId = URLEncoder.encode(community.id, StandardCharsets.UTF_8.toString())
                             val encodedName = URLEncoder.encode(community.name, StandardCharsets.UTF_8.toString())
                             val encodedDescription = URLEncoder.encode(community.description, StandardCharsets.UTF_8.toString())
                             
                             // Navegación con Query Parameters opcionales
-                            var route = "communityDetail/$encodedName/$encodedDescription"
+                            var route = "communityDetail/$encodedId/$encodedName/$encodedDescription"
                             val params = mutableListOf<String>()
                             if (!community.bannerUrl.isNullOrEmpty()) {
                                 params.add("bannerUrl=${URLEncoder.encode(community.bannerUrl, StandardCharsets.UTF_8.toString())}")
@@ -201,14 +208,26 @@ fun CommsScreen(navController: NavController) {
 
                     scope.launch {
                         try {
+                            isLoading = true
                             // Obtenemos el nombre real del usuario antes de crear
                             val username = authRepository.getUsername(userId)
+
+                            // Subida de imágenes a Firebase Storage
+                            val bannerUrl = banner?.let { uriString ->
+                                val compressed = ImageUtils.compressImage(context, Uri.parse(uriString))
+                                compressed?.let { communityRepository.uploadImage(it, "community_banners") }
+                            } ?: ""
+
+                            val profileUrl = profile?.let { uriString ->
+                                val compressed = ImageUtils.compressImage(context, Uri.parse(uriString))
+                                compressed?.let { communityRepository.uploadImage(it, "community_profiles") }
+                            } ?: ""
 
                             val newCommunity = Community(
                                 name = name,
                                 description = desc,
-                                bannerUrl = banner ?: "", // Cadena vacía en lugar de null
-                                profileUrl = profile ?: "", // Cadena vacía en lugar de null
+                                bannerUrl = bannerUrl,
+                                profileUrl = profileUrl,
                                 creatorId = userId,
                                 createdAt = Timestamp.now(),
                                 updatedAt = Timestamp.now(),
@@ -219,7 +238,6 @@ fun CommsScreen(navController: NavController) {
                             communityRepository.createCommunity(newCommunity, username)
 
                             // Recarga de datos
-                            isLoading = true
                             communities = communityRepository.getUserCommunities(userId)
                             isLoading = false
                         } catch (e: Exception) {

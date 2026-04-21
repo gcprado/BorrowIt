@@ -62,12 +62,21 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.pigs.borrowit.data.model.CommunityItem
+import com.pigs.borrowit.data.model.Item
+import com.pigs.borrowit.data.repositories.ItemRepository
+import androidx.compose.runtime.collectAsState
 import com.pigs.borrowit.screens.components.EditCommDialog
 import com.pigs.borrowit.screens.components.ItemDetailDialog
+import com.pigs.borrowit.screens.components.ItemCard
 import com.pigs.borrowit.ui.theme.Primary
-import java.net.URLDecoder
-import java.nio.charset.StandardCharsets
+import androidx.compose.runtime.rememberCoroutineScope
+import android.net.Uri
+import com.google.firebase.Timestamp
+import com.pigs.borrowit.data.model.Community
+import com.pigs.borrowit.data.repositories.CommunityRepository
+import com.pigs.borrowit.utils.ImageUtils
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
 
 data class CommunityMember(
     val id: String,
@@ -80,47 +89,32 @@ data class CommunityMember(
 @Composable
 fun CommScreen(
     navController: NavController,
+    communityId: String,
     name: String,
     description: String,
     bannerUrl: String?,
     profileUrl: String?
 ) {
-    var currentName by remember { mutableStateOf(name) }
-    var currentDescription by remember { mutableStateOf(URLDecoder.decode(description, StandardCharsets.UTF_8.toString())) }
-    var currentBannerUrl by remember { mutableStateOf(bannerUrl?.let { if (it == "null") null else URLDecoder.decode(it, StandardCharsets.UTF_8.toString()) }) }
-    var currentProfileUrl by remember { mutableStateOf(profileUrl?.let { if (it == "null") null else URLDecoder.decode(it, StandardCharsets.UTF_8.toString()) }) }
+    val itemRepository = remember { ItemRepository() }
+    val communityRepository = remember { CommunityRepository() }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val itemsInCommunityState by itemRepository.getItemsByCommunityFlow(communityId).collectAsState(initial = emptyList())
 
-    var selectedItem by remember { mutableStateOf<CommunityItem?>(null) }
+    // Navigation parameters are automatically decoded by the navigation component.
+    val decodedName = name
+    val decodedDescription = description
+    val decodedBannerUrl = if (bannerUrl == "null") null else bannerUrl
+    val decodedProfileUrl = if (profileUrl == "null") null else profileUrl
+
+    var currentName by remember { mutableStateOf(decodedName) }
+    var currentDescription by remember { mutableStateOf(decodedDescription) }
+    var currentBannerUrl by remember { mutableStateOf(decodedBannerUrl) }
+    var currentProfileUrl by remember { mutableStateOf(decodedProfileUrl) }
+
     var showEditDialog by remember { mutableStateOf(false) }
-    var selectedTab by remember { mutableIntStateOf(0) } // 0: Items, 1: Members
-
-    val itemsInCommunity = remember(currentName) {
-        when (currentName) {
-            "Mechanics" -> listOf(
-                CommunityItem(id = "m1", name = "Hydraulic Jack", description = "Heavy duty 3-ton jack for lifting vehicles.", imageUrls = listOf("file:///android_asset/communities/mechanics/HydraulicJack.jpg"), ownerName = "Mike Wheeler", condition = "Excellent condition", startDate = com.google.firebase.Timestamp.now(), endDate = com.google.firebase.Timestamp.now()),
-                CommunityItem(id = "m2", name = "Torque Wrench", description = "Digital torque wrench, very precise.", imageUrls = listOf("file:///android_asset/communities/mechanics/TorqueWrench.jpg"), ownerName = "Dustin Henderson", condition = "Good condition", startDate = com.google.firebase.Timestamp.now(), endDate = com.google.firebase.Timestamp.now()),
-                CommunityItem(id = "m3", name = "Screwdriver Set", description = "Set of 20 screwdrivers for all types of screws.", imageUrls = listOf("file:///android_asset/communities/mechanics/ScrewdriverSet.jpg"), ownerName = "Lucas Sinclair", condition = "New", startDate = com.google.firebase.Timestamp.now(), endDate = com.google.firebase.Timestamp.now())
-            )
-            "Gardening" -> listOf(
-                CommunityItem(id = "g1", name = "Lawn Mower", description = "Electric mower, very quiet and efficient.", imageUrls = listOf("file:///android_asset/communities/gardening/LawnMower.jpg"), ownerName = "Nancy Wheeler", condition = "Used", startDate = com.google.firebase.Timestamp.now(), endDate = com.google.firebase.Timestamp.now()),
-                CommunityItem(id = "g2", name = "Pruning Shears", description = "Sharp shears for bushes and small branches.", imageUrls = listOf("file:///android_asset/communities/gardening/PruningShears.jpg"), ownerName = "Steve Harrington", condition = "Excellent condition", startDate = com.google.firebase.Timestamp.now(), endDate = com.google.firebase.Timestamp.now()),
-                CommunityItem(id = "g3", name = "Garden Rake", description = "Classic rake for leaves and soil preparation.", imageUrls = listOf("file:///android_asset/communities/gardening/GardenRake.jpg"), ownerName = "Jonathan Byers", condition = "Good condition", startDate = com.google.firebase.Timestamp.now(), endDate = com.google.firebase.Timestamp.now())
-            )
-            "Sports" -> listOf(
-                CommunityItem(id = "s1", name = "Tennis Racket", description = "Professional Wilson racket.", imageUrls = listOf("file:///android_asset/communities/sports/TennisRacket.jpg"), ownerName = "Robin Buckley", condition = "Excellent condition", startDate = com.google.firebase.Timestamp.now(), endDate = com.google.firebase.Timestamp.now()),
-                CommunityItem(id = "s2", name = "Basketball", description = "Official size indoor/outdoor ball.", imageUrls = listOf("file:///android_asset/communities/sports/Basketball.jpg"), ownerName = "Billy Hargrove", condition = "Used", startDate = com.google.firebase.Timestamp.now(), endDate = com.google.firebase.Timestamp.now())
-            )
-            "IT & Computing" -> listOf(
-                CommunityItem(id = "it1", name = "Mechanical Keyboard", description = "RGB, Blue switches.", imageUrls = listOf("file:///android_asset/communities/technology/MechanicalKeyboard.jpg"), ownerName = "Erica Sinclair", condition = "New", startDate = com.google.firebase.Timestamp.now(), endDate = com.google.firebase.Timestamp.now()),
-                CommunityItem(id = "it2", name = "External Hard Drive", description = "1TB SSD, very fast.", imageUrls = listOf("file:///android_asset/communities/technology/HardDrive.jpg"), ownerName = "Murray Bauman", condition = "Good condition", startDate = com.google.firebase.Timestamp.now(), endDate = com.google.firebase.Timestamp.now())
-            )
-            "Video Games" -> listOf(
-                CommunityItem(id = "vg1", name = "Nintendo Switch", description = "Console with 2 Joy-Cons.", imageUrls = listOf("file:///android_asset/communities/videogames/Switch.jpg"), ownerName = "Will Byers", condition = "Excellent condition", startDate = com.google.firebase.Timestamp.now(), endDate = com.google.firebase.Timestamp.now()),
-                CommunityItem(id = "vg2", name = "PS5 Controller", description = "DualSense controller, white.", imageUrls = listOf("file:///android_asset/communities/videogames/PS5Controller.jpg"), ownerName = "Max Mayfield", condition = "New", startDate = com.google.firebase.Timestamp.now(), endDate = com.google.firebase.Timestamp.now())
-            )
-            else -> emptyList()
-        }
-    }
+    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedItem by remember { mutableStateOf<Item?>(null) }
 
     val membersList = remember {
         mutableStateListOf(
@@ -163,7 +157,7 @@ fun CommScreen(
                             .height(200.dp)
                             .background(Color(0xFFE0E0E0))
                     ) {
-                        if (currentBannerUrl != null && currentBannerUrl!!.isNotEmpty()) {
+                        if (!currentBannerUrl.isNullOrEmpty() && currentBannerUrl != "null") {
                             AsyncImage(
                                 model = currentBannerUrl,
                                 contentDescription = null,
@@ -182,7 +176,7 @@ fun CommScreen(
                                 .background(Color.White)
                                 .border(4.dp, Color.White, CircleShape)
                         ) {
-                            if (currentProfileUrl != null && currentProfileUrl!!.isNotEmpty()) {
+                            if (!currentProfileUrl.isNullOrEmpty() && currentProfileUrl != "null") {
                                 AsyncImage(
                                     model = currentProfileUrl,
                                     contentDescription = null,
@@ -232,8 +226,8 @@ fun CommScreen(
             }
 
             if (selectedTab == 0) {
-                items(itemsInCommunity) { item ->
-                    ItemCard(item) { selectedItem = item }
+                items(itemsInCommunityState) { item ->
+                    ItemCard(item = item, onClick = { selectedItem = item })
                     Spacer(modifier = Modifier.height(12.dp))
                 }
             } else {
@@ -276,10 +270,47 @@ fun CommScreen(
             initialProfileUrl = currentProfileUrl,
             onDismiss = { showEditDialog = false },
             onSave = { newName, newDesc, newBanner, newProfile ->
-                currentName = newName
-                currentDescription = newDesc
-                currentBannerUrl = newBanner
-                currentProfileUrl = newProfile
+                scope.launch {
+                    try {
+                        var finalBannerUrl = currentBannerUrl
+                        var finalProfileUrl = currentProfileUrl
+
+                        // Upload new banner if changed
+                        if (newBanner != currentBannerUrl && newBanner?.startsWith("content://") == true) {
+                            val compressed = ImageUtils.compressImage(context, Uri.parse(newBanner))
+                            compressed?.let { 
+                                finalBannerUrl = communityRepository.uploadImage(it, "community_banners")
+                            }
+                        } else if (newBanner == null) {
+                            finalBannerUrl = null
+                        }
+
+                        // Upload new profile if changed
+                        if (newProfile != currentProfileUrl && newProfile?.startsWith("content://") == true) {
+                            val compressed = ImageUtils.compressImage(context, Uri.parse(newProfile))
+                            compressed?.let { 
+                                finalProfileUrl = communityRepository.uploadImage(it, "community_profiles")
+                            }
+                        } else if (newProfile == null) {
+                            finalProfileUrl = null
+                        }
+
+                        communityRepository.updateCommunity(
+                            communityId = communityId,
+                            name = newName,
+                            description = newDesc,
+                            bannerUrl = finalBannerUrl,
+                            profileUrl = finalProfileUrl
+                        )
+
+                        currentName = newName
+                        currentDescription = newDesc
+                        currentBannerUrl = finalBannerUrl
+                        currentProfileUrl = finalProfileUrl
+                    } catch (e: Exception) {
+                        // Handle error
+                    }
+                }
                 showEditDialog = false
             },
             onDelete = {
@@ -378,31 +409,6 @@ fun MemberCard(
                             leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error) }
                         )
                     }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ItemCard(item: CommunityItem, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(modifier = Modifier.padding(12.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            AsyncImage(model = item.imageUrls.firstOrNull(), contentDescription = null, modifier = Modifier.size(80.dp).clip(RoundedCornerShape(12.dp)), contentScale = ContentScale.Crop)
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = item.name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(text = item.description, style = MaterialTheme.typography.bodySmall, color = Color.Gray, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(20.dp).clip(CircleShape).background(Color.LightGray))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = "By ${item.ownerName}", style = MaterialTheme.typography.labelSmall, color = Primary)
                 }
             }
         }

@@ -7,9 +7,20 @@ import com.pigs.borrowit.data.model.CommunityItem
 import com.pigs.borrowit.data.model.CommunityMember
 import kotlinx.coroutines.tasks.await
 
+import com.google.firebase.storage.FirebaseStorage
+import java.util.UUID
+
 class CommunityRepository {
     private val db = FirebaseFirestore.getInstance()
+    private val storage = FirebaseStorage.getInstance()
     private val communitiesRef = db.collection("communities")
+
+    suspend fun uploadImage(imageData: ByteArray, path: String): String {
+        val fileName = "${UUID.randomUUID()}.jpg"
+        val imageRef = storage.reference.child("$path/$fileName")
+        imageRef.putBytes(imageData).await()
+        return imageRef.downloadUrl.await().toString()
+    }
 
     suspend fun createCommunity(community: Community, creatorName: String): Result<String> {
         return try {
@@ -75,6 +86,37 @@ class CommunityRepository {
             } catch (e2: Exception) {
                 emptyList()
             }
+        }
+    }
+
+    suspend fun getCommunity(communityId: String): Community? {
+        return try {
+            communitiesRef.document(communityId).get().await().toObject(Community::class.java)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    suspend fun updateCommunity(
+        communityId: String,
+        name: String,
+        description: String,
+        bannerUrl: String?,
+        profileUrl: String?
+    ): Result<Unit> {
+        return try {
+            val updates = mapOf(
+                "name" to name,
+                "nameLowercase" to name.lowercase(),
+                "description" to description,
+                "bannerUrl" to bannerUrl,
+                "profileUrl" to profileUrl,
+                "updatedAt" to com.google.firebase.Timestamp.now()
+            )
+            communitiesRef.document(communityId).update(updates).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 }

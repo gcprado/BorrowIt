@@ -12,10 +12,21 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.QuerySnapshot
 import com.google.firebase.firestore.Source
 
+import com.google.firebase.storage.FirebaseStorage
+import java.util.UUID
+
 class ItemRepository(
-    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
+    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
+    private val storage: FirebaseStorage = FirebaseStorage.getInstance()
 ) {
     private val itemsCollection = firestore.collection("items")
+
+    suspend fun uploadImage(imageData: ByteArray): String {
+        val fileName = "${UUID.randomUUID()}.jpg"
+        val imageRef = storage.reference.child("item_images/$fileName")
+        imageRef.putBytes(imageData).await()
+        return imageRef.downloadUrl.await().toString()
+    }
 
     suspend fun migrateAvailabilityField() {
         val snapshot: QuerySnapshot = itemsCollection.get(Source.SERVER).await()
@@ -95,6 +106,24 @@ class ItemRepository(
         awaitClose { snapshotListener.remove() }
     }
 
+    fun getItemsByCommunityFlow(communityId: String): Flow<List<Item>> = callbackFlow {
+        val snapshotListener = itemsCollection
+            .whereEqualTo("communityId", communityId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                val items = snapshot?.documents?.mapNotNull { doc ->
+                    mapDocumentToItem(doc)
+                } ?: emptyList()
+
+                trySend(items)
+            }
+        awaitClose { snapshotListener.remove() }
+    }
+
     private fun mapDocumentToItem(doc: com.google.firebase.firestore.DocumentSnapshot): Item? {
         return try {
             val name = doc.getString("name") ?: ""
@@ -103,14 +132,17 @@ class ItemRepository(
             val condition = doc.getString("condition") ?: ""
             val picture = doc.getString("picture") ?: ""
             val availability = parseAvailability(doc.get("availability"))
+            val communityId = doc.getString("communityId") ?: ""
 
             Item(
+                id = doc.id,
                 name = name,
                 description = description,
                 owner = owner,
                 condition = condition,
                 picture = picture,
-                availability = availability
+                availability = availability,
+                communityId = communityId
             )
         } catch (e: Exception) {
             Log.e("ItemRepository", "Error parseando documento ${doc.id}", e)
