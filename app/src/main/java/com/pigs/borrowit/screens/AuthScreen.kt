@@ -168,7 +168,7 @@ fun AuthScreen(
                 }
                 
                 // Email field (Signup) or ID field (Login)
-                val idLabel = if (mode == AuthMode.SIGNUP) "Enter a valid email" else "Enter username or email"
+                val idLabel = if (mode == AuthMode.SIGNUP) "Enter a valid email" else "Enter email"
                 val idValue = if (mode == AuthMode.SIGNUP) email else username
                 
                 OutlinedTextField(
