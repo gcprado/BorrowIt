@@ -61,7 +61,7 @@ sealed class Screen(
 
     data object CommunityDetail : Screen(
         // Cambiamos a parámetros de consulta (?) para los campos opcionales
-        route = "communityDetail/{name}/{description}?bannerUrl={bannerUrl}&profileUrl={profileUrl}",
+        route = "communityDetail/{id}/{name}/{description}?bannerUrl={bannerUrl}&profileUrl={profileUrl}",
         title = "Community",
         icon = Icons.Outlined.Person,
         iconFilled = Icons.Filled.Person

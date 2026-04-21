@@ -72,6 +72,7 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         composable(
             route = Screen.CommunityDetail.route,
             arguments = listOf(
+                navArgument("id") { type = NavType.StringType },
                 navArgument("name") { type = NavType.StringType },
                 navArgument("description") { type = NavType.StringType },
                 navArgument("bannerUrl") { 
@@ -84,11 +85,12 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 }
             )
         ) { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("id") ?: ""
             val name = backStackEntry.arguments?.getString("name") ?: ""
             val description = backStackEntry.arguments?.getString("description") ?: ""
             val bannerUrl = backStackEntry.arguments?.getString("bannerUrl")
             val profileUrl = backStackEntry.arguments?.getString("profileUrl")
-            CommScreen(navController, name, description, bannerUrl, profileUrl)
+            CommScreen(navController, id, name, description, bannerUrl, profileUrl)
         }
     }
 }

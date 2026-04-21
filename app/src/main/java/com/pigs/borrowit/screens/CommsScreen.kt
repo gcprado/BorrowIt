@@ -149,11 +149,12 @@ fun CommsScreen(navController: NavController) {
                 ) {
                     items(sortedCommunities, key = { it.id }) { community ->
                         CommunityCard(community) {
+                            val encodedId = URLEncoder.encode(community.id, StandardCharsets.UTF_8.toString())
                             val encodedName = URLEncoder.encode(community.name, StandardCharsets.UTF_8.toString())
                             val encodedDescription = URLEncoder.encode(community.description, StandardCharsets.UTF_8.toString())
                             
                             // Navegación con Query Parameters opcionales
-                            var route = "communityDetail/$encodedName/$encodedDescription"
+                            var route = "communityDetail/$encodedId/$encodedName/$encodedDescription"
                             val params = mutableListOf<String>()
                             if (!community.bannerUrl.isNullOrEmpty()) {
                                 params.add("bannerUrl=${URLEncoder.encode(community.bannerUrl, StandardCharsets.UTF_8.toString())}")

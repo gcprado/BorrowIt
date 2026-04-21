@@ -27,6 +27,8 @@ import com.pigs.borrowit.data.model.Item
 import com.pigs.borrowit.data.repositories.ItemRepository
 import com.pigs.borrowit.screens.components.MainBottomNav
 import com.pigs.borrowit.screens.components.UploadItemDialog
+import com.pigs.borrowit.screens.components.ItemGridCard
+import com.pigs.borrowit.screens.components.ItemDetailDialog
 import com.pigs.borrowit.ui.theme.Primary
 
 @Composable
@@ -42,6 +44,7 @@ fun ItemsScreen(
     }.collectAsState(initial = null)
     
     var showAddItem by remember { mutableStateOf(false) }
+    var selectedItem by remember { mutableStateOf<Item?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -94,7 +97,7 @@ fun ItemsScreen(
                             contentPadding = PaddingValues(vertical = 8.dp)
                         ) {
                             items(items) { item ->
-                                ItemCard(item)
+                                ItemGridCard(item = item, onClick = { selectedItem = item })
                             }
                         }
                     }
@@ -124,67 +127,14 @@ fun ItemsScreen(
                 }
             )
         }
-        MainBottomNav(navController, modifier = Modifier.align(Alignment.BottomCenter))
-    }
-}
 
-@Composable
-fun ItemCard(item: Item) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(220.dp), // Height similar to CommunityCard (240dp)
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Item Image
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp)
-                    .background(Color(0xFFE0E0E0))
-            ) {
-                if (item.picture.isNotEmpty()) {
-                    AsyncImage(
-                        model = item.picture,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-            }
-
-            // Item Details
-            Column(
-                modifier = Modifier
-                    .padding(12.dp)
-                    .fillMaxSize()
-            ) {
-                Text(
-                    text = item.name,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = item.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = item.condition,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Primary,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+        selectedItem?.let { item ->
+            ItemDetailDialog(
+                item = item,
+                onDismiss = { selectedItem = null }
+            )
         }
+        
+        MainBottomNav(navController, modifier = Modifier.align(Alignment.BottomCenter))
     }
 }

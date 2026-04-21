@@ -29,7 +29,8 @@ import coil.compose.rememberAsyncImagePainter
 import com.pigs.borrowit.R
 import com.pigs.borrowit.control.HomeViewModel
 import com.pigs.borrowit.data.model.BorrowRequest
-import com.pigs.borrowit.data.model.CommunityItem
+import com.pigs.borrowit.data.model.Availability
+import com.pigs.borrowit.data.model.Item
 import com.pigs.borrowit.screens.components.ItemDetailDialog
 import com.pigs.borrowit.screens.components.MainBottomNav
 import com.pigs.borrowit.screens.components.NotificationsDialog
@@ -59,15 +60,17 @@ fun HomeScreen(
 
     // Recommended item from a community
     val recommendedItem = remember {
-        CommunityItem(
+        Item(
             id = "vg1",
             name = "Nintendo Switch",
             description = "Console with 2 Joy-Cons. Perfect for parties or a weekend of gaming.",
-            imageUrls = listOf("file:///android_asset/communities/videogames/Switch.jpg"),
-            ownerName = "Will Byers",
+            picture = "file:///android_asset/communities/videogames/Switch.jpg",
+            owner = "Will Byers",
             condition = "Excellent condition",
-            startDate = com.google.firebase.Timestamp.now(),
-            endDate = com.google.firebase.Timestamp.now()
+            availability = Availability(
+                start = java.util.Date(),
+                end = java.util.Date()
+            )
         )
     }
 
@@ -92,7 +95,7 @@ fun HomeScreen(
         )
     )
 
-    var selectedItem by remember { mutableStateOf<CommunityItem?>(null) }
+    var selectedItem by remember { mutableStateOf<Item?>(null) }
 
     Box(modifier = Modifier.fillMaxSize().background(Background)) {
         LazyColumn(
@@ -259,7 +262,7 @@ fun SectionHeader(
 
 @Composable
 fun HomeRecommendedCard(
-    item: CommunityItem,
+    item: Item,
     onClick: () -> Unit
 ) {
     Card(
@@ -274,7 +277,7 @@ fun HomeRecommendedCard(
         Column {
             Box(modifier = Modifier.fillMaxWidth().height(160.dp)) {
                 AsyncImage(
-                    model = item.imageUrls.firstOrNull(),
+                    model = item.picture,
                     contentDescription = item.name,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
@@ -316,7 +319,7 @@ fun HomeRecommendedCard(
                 Spacer(modifier = Modifier.height(4.dp))
                 
                 Text(
-                    text = "Lent by ${item.ownerName} • Video Games",
+                    text = "Lent by ${item.owner} • Video Games",
                     fontSize = 12.sp,
                     color = Color.Gray
                 )

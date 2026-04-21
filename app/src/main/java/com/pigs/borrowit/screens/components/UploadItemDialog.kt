@@ -66,7 +66,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -84,7 +83,17 @@ import java.util.Locale
 import android.net.Uri
 import com.pigs.borrowit.utils.ImageUtils
 
-@OptIn(ExperimentalMaterial3Api::class)
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import com.pigs.borrowit.data.model.Community
+import com.pigs.borrowit.data.repositories.CommunityRepository
+
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.Groups
+
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun UploadItemDialog(
     userId: String,                     // Logged-in user ID
@@ -94,6 +103,7 @@ fun UploadItemDialog(
     var itemName by remember { mutableStateOf("") }
     var itemDescription by remember { mutableStateOf("") }
     var selectedCondition by remember { mutableStateOf("") }
+    var selectedCommunity by remember { mutableStateOf<Community?>(null) }
     val imageUris = remember { mutableStateListOf<String>() }
     var startDate by remember { mutableStateOf("") }
     var endDate by remember { mutableStateOf("") }
@@ -104,6 +114,7 @@ fun UploadItemDialog(
     var dateError by remember { mutableStateOf("") }
     var conditionError by remember { mutableStateOf("") }
     var imageError by remember { mutableStateOf("") }
+    var communityError by remember { mutableStateOf("") }
     var attemptedSubmit by remember { mutableStateOf(false) }
     var shouldShake by remember { mutableStateOf(false) }
 
@@ -114,6 +125,15 @@ fun UploadItemDialog(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val repository = remember { ItemRepository() }
+    val communityRepository = remember { CommunityRepository() }
+
+    var userCommunities by remember { mutableStateOf<List<Community>>(emptyList()) }
+    var isLoadingCommunities by remember { mutableStateOf(true) }
+
+    LaunchedEffect(userId) {
+        userCommunities = communityRepository.getUserCommunities(userId)
+        isLoadingCommunities = false
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -138,6 +158,21 @@ fun UploadItemDialog(
                         .padding(horizontal = 24.dp)
                 ) {
                     Spacer(modifier = Modifier.height(8.dp))
+
+                    CommunitySelector(
+                        communities = userCommunities,
+                        selectedCommunity = selectedCommunity,
+                        onCommunitySelected = {
+                            selectedCommunity = it
+                            if (attemptedSubmit) {
+                                communityError = validateCommunity(it)
+                            }
+                        },
+                        isLoading = isLoadingCommunities,
+                        errorMessage = communityError
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
 
                     SingleLineTextField(
                         label = "Item Name",
@@ -235,15 +270,26 @@ fun UploadItemDialog(
                         dateError = validateDates(startDate, endDate)
                         conditionError = validateCondition(selectedCondition)
                         imageError = validateImages(imageUris.toList())
+                        communityError = validateCommunity(selectedCommunity)
 
                         val hasErrors = listOf(
                             nameError, descriptionError, dateError,
-                            conditionError, imageError
+                            conditionError, imageError, communityError
                         ).any { it.isNotEmpty() }
 
                         if (hasErrors) {
                             shouldShake = true
-                            vibrateDevice(context)
+                            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+                                vibratorManager.defaultVibrator
+                            } else {
+                                context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                            }
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                vibrator.vibrate(VibrationEffect.createOneShot(200, VibrationEffect.DEFAULT_AMPLITUDE))
+                            } else {
+                                vibrator.vibrate(200)
+                            }
                         } else {
                             showConfirmation = true
                         }
@@ -287,7 +333,8 @@ fun UploadItemDialog(
                                 owner = userId,
                                 condition = selectedCondition,
                                 picture = finalPictureUrl,
-                                availability = availability
+                                availability = availability,
+                                communityId = selectedCommunity?.id ?: ""
                             )
 
                             val result = repository.addItemSuspend(newItem)
@@ -432,7 +479,7 @@ fun TextArea(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ConditionSelector(
     selectedCondition: String,
@@ -806,6 +853,14 @@ fun validateCondition(condition: String): String {
     }
 }
 
+fun validateCommunity(community: Community?): String {
+    return if (community == null) {
+        "Please select a community"
+    } else {
+        ""
+    }
+}
+
 fun validateImages(images: List<String>): String {
     return if (images.isEmpty()) {
         "Please add at least one image"
@@ -814,19 +869,114 @@ fun validateImages(images: List<String>): String {
     }
 }
 
-fun vibrateDevice(context: Context) {
-    val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
-        vibratorManager.defaultVibrator
-    } else {
-        @Suppress("DEPRECATION")
-        context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-    }
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CommunitySelector(
+    communities: List<Community>,
+    selectedCommunity: Community?,
+    onCommunitySelected: (Community) -> Unit,
+    isLoading: Boolean,
+    errorMessage: String = ""
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val isError = errorMessage.isNotEmpty()
 
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        vibrator.vibrate(VibrationEffect.createOneShot(200, VibrationEffect.DEFAULT_AMPLITUDE))
-    } else {
-        @Suppress("DEPRECATION")
-        vibrator.vibrate(200)
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "Post to Community",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { if (!isLoading) expanded = !expanded },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            OutlinedTextField(
+                value = if (isLoading) "Loading communities..." else selectedCommunity?.name ?: "Select a community",
+                onValueChange = {},
+                readOnly = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(MenuAnchorType.PrimaryEditable, true),
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                isError = isError,
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                ),
+                leadingIcon = {
+                    if (selectedCommunity?.profileUrl != null) {
+                        AsyncImage(
+                            model = selectedCommunity.profileUrl,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Groups,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = Color.Gray
+                        )
+                    }
+                }
+            )
+
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                communities.forEach { community ->
+                    DropdownMenuItem(
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (community.profileUrl != null) {
+                                    AsyncImage(
+                                        model = community.profileUrl,
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .clip(CircleShape),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.LightGray),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(community.name.take(1), color = Color.White)
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(text = community.name)
+                            }
+                        },
+                        onClick = {
+                            onCommunitySelected(community)
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+        if (isError) {
+            Text(
+                text = errorMessage,
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+            )
+        }
     }
 }
