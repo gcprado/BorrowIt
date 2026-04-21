@@ -61,6 +61,7 @@ fun ProfileScreen(
     val context = LocalContext.current
     val scrollState = rememberScrollState()
     var showHistory by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(userState) {
         userState?.let { user ->
@@ -248,7 +249,7 @@ fun ProfileScreen(
             ProfileOption(
                 icon = Icons.Default.DeleteForever,
                 title = "Delete account",
-                onClick = { viewModel.onDeleteAccount() },
+                onClick = { showDeleteDialog = true },
                 color = Color(0xFFD32F2F)
             )
 
@@ -278,6 +279,41 @@ fun ProfileScreen(
 
         if (showHistory) {
             HistoryDialog(onDismiss = { showHistory = false })
+        }
+
+        // Diálogo de confirmación para eliminar cuenta
+        if (showDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                title = {
+                    Text(
+                        text = "Delete Account",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Text("This action is permanent and cannot be undone. All your communities and shared items will be lost. Are you sure you want to proceed?")
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showDeleteDialog = false
+                            viewModel.onDeleteAccount()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF2B8B5)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Delete Permanently", color = Color.Black)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteDialog = false }) {
+                        Text("Cancel", color = Primary)
+                    }
+                },
+                shape = RoundedCornerShape(24.dp),
+                containerColor = CardBackground
+            )
         }
     }
 }
