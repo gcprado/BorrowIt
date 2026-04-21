@@ -69,8 +69,14 @@ import com.pigs.borrowit.screens.components.EditCommDialog
 import com.pigs.borrowit.screens.components.ItemDetailDialog
 import com.pigs.borrowit.screens.components.ItemCard
 import com.pigs.borrowit.ui.theme.Primary
-import java.net.URLDecoder
-import java.nio.charset.StandardCharsets
+import androidx.compose.runtime.rememberCoroutineScope
+import android.net.Uri
+import com.google.firebase.Timestamp
+import com.pigs.borrowit.data.model.Community
+import com.pigs.borrowit.data.repositories.CommunityRepository
+import com.pigs.borrowit.utils.ImageUtils
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
 
 data class CommunityMember(
     val id: String,
@@ -90,13 +96,16 @@ fun CommScreen(
     profileUrl: String?
 ) {
     val itemRepository = remember { ItemRepository() }
+    val communityRepository = remember { CommunityRepository() }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val itemsInCommunityState by itemRepository.getItemsByCommunityFlow(communityId).collectAsState(initial = emptyList())
 
-    // Decode parameters if needed
-    val decodedName = remember(name) { URLDecoder.decode(name, StandardCharsets.UTF_8.toString()) }
-    val decodedDescription = remember(description) { URLDecoder.decode(description, StandardCharsets.UTF_8.toString()) }
-    val decodedBannerUrl = remember(bannerUrl) { bannerUrl?.let { URLDecoder.decode(it, StandardCharsets.UTF_8.toString()) } }
-    val decodedProfileUrl = remember(profileUrl) { profileUrl?.let { URLDecoder.decode(it, StandardCharsets.UTF_8.toString()) } }
+    // Navigation parameters are automatically decoded by the navigation component.
+    val decodedName = name
+    val decodedDescription = description
+    val decodedBannerUrl = if (bannerUrl == "null") null else bannerUrl
+    val decodedProfileUrl = if (profileUrl == "null") null else profileUrl
 
     var currentName by remember { mutableStateOf(decodedName) }
     var currentDescription by remember { mutableStateOf(decodedDescription) }
@@ -148,7 +157,7 @@ fun CommScreen(
                             .height(200.dp)
                             .background(Color(0xFFE0E0E0))
                     ) {
-                        if (currentBannerUrl != null && currentBannerUrl!!.isNotEmpty()) {
+                        if (!currentBannerUrl.isNullOrEmpty() && currentBannerUrl != "null") {
                             AsyncImage(
                                 model = currentBannerUrl,
                                 contentDescription = null,
@@ -167,7 +176,7 @@ fun CommScreen(
                                 .background(Color.White)
                                 .border(4.dp, Color.White, CircleShape)
                         ) {
-                            if (currentProfileUrl != null && currentProfileUrl!!.isNotEmpty()) {
+                            if (!currentProfileUrl.isNullOrEmpty() && currentProfileUrl != "null") {
                                 AsyncImage(
                                     model = currentProfileUrl,
                                     contentDescription = null,
@@ -261,10 +270,47 @@ fun CommScreen(
             initialProfileUrl = currentProfileUrl,
             onDismiss = { showEditDialog = false },
             onSave = { newName, newDesc, newBanner, newProfile ->
-                currentName = newName
-                currentDescription = newDesc
-                currentBannerUrl = newBanner
-                currentProfileUrl = newProfile
+                scope.launch {
+                    try {
+                        var finalBannerUrl = currentBannerUrl
+                        var finalProfileUrl = currentProfileUrl
+
+                        // Upload new banner if changed
+                        if (newBanner != currentBannerUrl && newBanner?.startsWith("content://") == true) {
+                            val compressed = ImageUtils.compressImage(context, Uri.parse(newBanner))
+                            compressed?.let { 
+                                finalBannerUrl = communityRepository.uploadImage(it, "community_banners")
+                            }
+                        } else if (newBanner == null) {
+                            finalBannerUrl = null
+                        }
+
+                        // Upload new profile if changed
+                        if (newProfile != currentProfileUrl && newProfile?.startsWith("content://") == true) {
+                            val compressed = ImageUtils.compressImage(context, Uri.parse(newProfile))
+                            compressed?.let { 
+                                finalProfileUrl = communityRepository.uploadImage(it, "community_profiles")
+                            }
+                        } else if (newProfile == null) {
+                            finalProfileUrl = null
+                        }
+
+                        communityRepository.updateCommunity(
+                            communityId = communityId,
+                            name = newName,
+                            description = newDesc,
+                            bannerUrl = finalBannerUrl,
+                            profileUrl = finalProfileUrl
+                        )
+
+                        currentName = newName
+                        currentDescription = newDesc
+                        currentBannerUrl = finalBannerUrl
+                        currentProfileUrl = finalProfileUrl
+                    } catch (e: Exception) {
+                        // Handle error
+                    }
+                }
                 showEditDialog = false
             },
             onDelete = {
