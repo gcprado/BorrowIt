@@ -97,34 +97,41 @@ class CommunityRepository {
 
     suspend fun getUserCommunities(userId: String): List<Community> {
         val result = mutableSetOf<Community>()
+        
         try {
-            // 1. First fetch communities where user is the creator (always works)
-            val createdSnapshot = communitiesRef.whereEqualTo("creatorId", userId).get().await()
-            result.addAll(createdSnapshot.toObjects(Community::class.java))
-        } catch (e: Exception) {
-            Log.e("CommunityRepository", "Error fetching created communities", e)
-        }
-
-        try {
-            // 2. Then fetch communities where user is a member (requires collectionGroup index)
+            // Updated logic to fetch ALL communities where the user is a member
+            // using collectionGroup query on the "members" subcollection.
             val memberships = db.collectionGroup("members")
                 .whereEqualTo("userId", userId)
                 .get()
                 .await()
             
             val communityIds = memberships.documents.mapNotNull { it.reference.parent.parent?.id }
-            val existingIds = result.map { it.id }.toSet()
-            val missingIds = communityIds.filter { it !in existingIds }
             
-            if (missingIds.isNotEmpty()) {
-                missingIds.chunked(10).forEach { chunk ->
+            if (communityIds.isNotEmpty()) {
+                // Fetch the actual Community objects for these IDs
+                // chunked(10) because 'whereIn' only supports up to 10 values
+                communityIds.chunked(10).forEach { chunk ->
                     val snapshot = communitiesRef.whereIn("__name__", chunk).get().await()
                     result.addAll(snapshot.toObjects(Community::class.java))
                 }
             }
+            
+            // Fallback: If for some reason collectionGroup failed or user just created a community 
+            // but the membership doc isn't indexed yet, also check by creatorId.
+            val createdSnapshot = communitiesRef.whereEqualTo("creatorId", userId).get().await()
+            result.addAll(createdSnapshot.toObjects(Community::class.java))
+
         } catch (e: Exception) {
-            // This might fail if the Collection Group index hasn't been created yet in the Firebase Console
-            Log.e("CommunityRepository", "Error fetching membership communities (check if index is created)", e)
+            Log.e("CommunityRepository", "Error fetching user communities (index might be needed)", e)
+            
+            // Fallback to just creatorId if index error occurs
+            try {
+                val createdSnapshot = communitiesRef.whereEqualTo("creatorId", userId).get().await()
+                result.addAll(createdSnapshot.toObjects(Community::class.java))
+            } catch (e2: Exception) {
+                Log.e("CommunityRepository", "Fallback fetch failed", e2)
+            }
         }
         
         return result.toList().sortedByDescending { it.updatedAt }
