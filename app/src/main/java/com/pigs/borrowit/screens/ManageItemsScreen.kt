@@ -301,8 +301,8 @@ fun ManageItemCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 val subtitle = when(item.status) {
-                    ItemStatus.LENT -> if (resolvedName.isNotBlank()) "Prestado a: $resolvedName" else "Prestado"
-                    ItemStatus.IN_USE -> if (resolvedName.isNotBlank()) "De: $resolvedName" else "En uso"
+                    ItemStatus.LENT -> if (resolvedName.isNotBlank()) "Lent to: $resolvedName" else "Borrowed"
+                    ItemStatus.IN_USE -> if (resolvedName.isNotBlank()) "From: $resolvedName" else "In use"
                     else -> item.status.toDisplayString()
                 }
 
@@ -321,16 +321,16 @@ fun ManageItemCard(
 @Composable
 fun StatusBadge(status: String) {
     val backgroundColor = when (status) {
-        "Disponible" -> Color(0xFF4CAF50).copy(alpha = 0.15f)
-        "Prestado" -> Primary.copy(alpha = 0.2f)
-        "En uso" -> Color(0xFFFF9800).copy(alpha = 0.15f)
+        "Available" -> Color(0xFF4CAF50).copy(alpha = 0.15f)
+        "Borrowed" -> Primary.copy(alpha = 0.2f)
+        "In use" -> Color(0xFFFF9800).copy(alpha = 0.15f)
         else -> Color.LightGray.copy(alpha = 0.2f)
     }
 
     val textColor = when (status) {
-        "Disponible" -> Color(0xFF2E7D32)
-        "Prestado" -> Color(0xFF1976D2)
-        "En uso" -> Color(0xFFE65100)
+        "Available" -> Color(0xFF2E7D32)
+        "Borrowed" -> Color(0xFF1976D2)
+        "In use" -> Color(0xFFE65100)
         else -> Color.Gray
     }
 

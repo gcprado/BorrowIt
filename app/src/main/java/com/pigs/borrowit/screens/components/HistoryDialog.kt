@@ -73,9 +73,9 @@ enum class ItemStatus {
     AVAILABLE, LENT, IN_USE;
     
     fun toDisplayString() = when(this) {
-        AVAILABLE -> "Disponible"
-        LENT -> "Prestado"
-        IN_USE -> "En uso"
+        AVAILABLE -> "Available"
+        LENT -> "Borrowed"
+        IN_USE -> "In use"
     }
 }
 
