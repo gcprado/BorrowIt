@@ -149,6 +149,7 @@ class ItemRepository(
             val owner = doc.getString("owner") ?: ""
             val condition = doc.getString("condition") ?: ""
             val picture = doc.getString("picture") ?: ""
+            val pictures = doc.get("pictures") as? List<String> ?: emptyList()
             val availability = parseAvailability(doc.get("availability"))
             val communityId = doc.getString("communityId") ?: ""
 
@@ -159,6 +160,7 @@ class ItemRepository(
                 owner = owner,
                 condition = condition,
                 picture = picture,
+                pictures = pictures,
                 availability = availability,
                 communityId = communityId
             )

@@ -107,7 +107,13 @@ fun UploadItemDialog(
     var itemDescription by remember { mutableStateOf(itemToEdit?.description ?: "") }
     var selectedCondition by remember { mutableStateOf(itemToEdit?.condition ?: "") }
     var selectedCommunity by remember { mutableStateOf<Community?>(null) } // Community initialized after fetching
-    val imageUris = remember { mutableStateListOf<String>().apply { if (itemToEdit?.picture?.isNotEmpty() == true) add(itemToEdit.picture) } }
+    val imageUris = remember { mutableStateListOf<String>().apply { 
+        if (itemToEdit?.pictures?.isNotEmpty() == true) {
+            addAll(itemToEdit.pictures)
+        } else if (itemToEdit?.picture?.isNotEmpty() == true) {
+            add(itemToEdit.picture)
+        }
+    } }
     var startDate by remember { mutableStateOf(itemToEdit?.availability?.start?.let { dateFormatForUI.format(it) } ?: "") }
     var endDate by remember { mutableStateOf(itemToEdit?.availability?.end?.let { dateFormatForUI.format(it) } ?: "") }
     var showConfirmation by remember { mutableStateOf(false) }
@@ -319,18 +325,19 @@ fun UploadItemDialog(
                             val startDateObj = dateFormat.parse(startDate) ?: throw Exception("Invalid start date")
                             val endDateObj = dateFormat.parse(endDate) ?: throw Exception("Invalid end date")
                             val availability = Availability(startDateObj, endDateObj)
-                            
-                            val localUri = imageUris.firstOrNull()
-                            val finalPictureUrl = if (localUri != null && !localUri.startsWith("http")) {
-                                val compressedData = ImageUtils.compressImage(context, Uri.parse(localUri))
-                                if (compressedData != null) {
-                                    repository.uploadImage(compressedData)
+
+                            val finalPictureUrls = mutableListOf<String>()
+                            for (uriString in imageUris) {
+                                if (!uriString.startsWith("http")) {
+                                    val compressedData = ImageUtils.compressImage(context, Uri.parse(uriString))
+                                    if (compressedData != null) {
+                                        finalPictureUrls.add(repository.uploadImage(compressedData))
+                                    }
                                 } else {
-                                    itemToEdit?.picture ?: ""
+                                    finalPictureUrls.add(uriString)
                                 }
-                            } else {
-                                localUri ?: itemToEdit?.picture ?: ""
                             }
+                            val finalPictureUrl = finalPictureUrls.firstOrNull() ?: ""
 
                             if (itemToEdit != null) {
                                 val updates = mapOf(
@@ -338,6 +345,7 @@ fun UploadItemDialog(
                                     "description" to itemDescription,
                                     "condition" to selectedCondition,
                                     "picture" to finalPictureUrl,
+                                    "pictures" to finalPictureUrls,
                                     "availability" to mapOf("start" to com.google.firebase.Timestamp(startDateObj), "end" to com.google.firebase.Timestamp(endDateObj)),
                                     "communityId" to (selectedCommunity?.id ?: "")
                                 )
@@ -356,6 +364,7 @@ fun UploadItemDialog(
                                     owner = userId,
                                     condition = selectedCondition,
                                     picture = finalPictureUrl,
+                                    pictures = finalPictureUrls,
                                     availability = availability,
                                     communityId = selectedCommunity?.id ?: ""
                                 )
