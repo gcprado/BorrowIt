@@ -97,16 +97,19 @@ import androidx.compose.material.icons.filled.Groups
 @Composable
 fun UploadItemDialog(
     userId: String,                     // Logged-in user ID
+    itemToEdit: Item? = null,
     onDismiss: () -> Unit,
     onItemUploaded: (String) -> Unit = {} // callback with the created document ID
 ) {
-    var itemName by remember { mutableStateOf("") }
-    var itemDescription by remember { mutableStateOf("") }
-    var selectedCondition by remember { mutableStateOf("") }
-    var selectedCommunity by remember { mutableStateOf<Community?>(null) }
-    val imageUris = remember { mutableStateListOf<String>() }
-    var startDate by remember { mutableStateOf("") }
-    var endDate by remember { mutableStateOf("") }
+    val dateFormatForUI = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    
+    var itemName by remember { mutableStateOf(itemToEdit?.name ?: "") }
+    var itemDescription by remember { mutableStateOf(itemToEdit?.description ?: "") }
+    var selectedCondition by remember { mutableStateOf(itemToEdit?.condition ?: "") }
+    var selectedCommunity by remember { mutableStateOf<Community?>(null) } // Community initialized after fetching
+    val imageUris = remember { mutableStateListOf<String>().apply { if (itemToEdit?.picture?.isNotEmpty() == true) add(itemToEdit.picture) } }
+    var startDate by remember { mutableStateOf(itemToEdit?.availability?.start?.let { dateFormatForUI.format(it) } ?: "") }
+    var endDate by remember { mutableStateOf(itemToEdit?.availability?.end?.let { dateFormatForUI.format(it) } ?: "") }
     var showConfirmation by remember { mutableStateOf(false) }
 
     var nameError by remember { mutableStateOf("") }
@@ -132,6 +135,9 @@ fun UploadItemDialog(
 
     LaunchedEffect(userId) {
         userCommunities = communityRepository.getUserCommunities(userId)
+        if (itemToEdit != null) {
+            selectedCommunity = userCommunities.find { it.id == itemToEdit.communityId }
+        }
         isLoadingCommunities = false
     }
 
@@ -149,7 +155,7 @@ fun UploadItemDialog(
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                DialogHeader(onDismiss = onDismiss)
+                DialogHeader(onDismiss = onDismiss, isEditing = itemToEdit != null)
 
                 Column(
                     modifier = Modifier
@@ -314,36 +320,54 @@ fun UploadItemDialog(
                             val endDateObj = dateFormat.parse(endDate) ?: throw Exception("Invalid end date")
                             val availability = Availability(startDateObj, endDateObj)
                             
-                            // Upload image to Firebase Storage if exists
                             val localUri = imageUris.firstOrNull()
-                            val finalPictureUrl = if (localUri != null) {
+                            val finalPictureUrl = if (localUri != null && !localUri.startsWith("http")) {
                                 val compressedData = ImageUtils.compressImage(context, Uri.parse(localUri))
                                 if (compressedData != null) {
                                     repository.uploadImage(compressedData)
                                 } else {
-                                    ""
+                                    itemToEdit?.picture ?: ""
                                 }
                             } else {
-                                ""
+                                localUri ?: itemToEdit?.picture ?: ""
                             }
 
-                            val newItem = Item(
-                                name = itemName,
-                                description = itemDescription,
-                                owner = userId,
-                                condition = selectedCondition,
-                                picture = finalPictureUrl,
-                                availability = availability,
-                                communityId = selectedCommunity?.id ?: ""
-                            )
+                            if (itemToEdit != null) {
+                                val updates = mapOf(
+                                    "name" to itemName,
+                                    "description" to itemDescription,
+                                    "condition" to selectedCondition,
+                                    "picture" to finalPictureUrl,
+                                    "availability" to mapOf("start" to com.google.firebase.Timestamp(startDateObj), "end" to com.google.firebase.Timestamp(endDateObj)),
+                                    "communityId" to (selectedCommunity?.id ?: "")
+                                )
+                                val result = repository.updateItemSuspend(itemToEdit.id, updates)
+                                result.onSuccess {
+                                    onItemUploaded(itemToEdit.id)
+                                    onDismiss()
+                                }.onFailure { e ->
+                                    uploadError = e.message ?: "Unknown error"
+                                    isUploading = false
+                                }
+                            } else {
+                                val newItem = Item(
+                                    name = itemName,
+                                    description = itemDescription,
+                                    owner = userId,
+                                    condition = selectedCondition,
+                                    picture = finalPictureUrl,
+                                    availability = availability,
+                                    communityId = selectedCommunity?.id ?: ""
+                                )
 
-                            val result = repository.addItemSuspend(newItem)
-                            result.onSuccess { docId ->
-                                onItemUploaded(docId)
-                                onDismiss()
-                            }.onFailure { e ->
-                                uploadError = e.message ?: "Unknown error"
-                                isUploading = false
+                                val result = repository.addItemSuspend(newItem)
+                                result.onSuccess { docId ->
+                                    onItemUploaded(docId)
+                                    onDismiss()
+                                }.onFailure { e ->
+                                    uploadError = e.message ?: "Unknown error"
+                                    isUploading = false
+                                }
                             }
                         } catch (e: Exception) {
                             uploadError = e.message ?: "Format error"
@@ -363,7 +387,7 @@ fun UploadItemDialog(
 }
 
 @Composable
-fun DialogHeader(onDismiss: () -> Unit) {
+fun DialogHeader(onDismiss: () -> Unit, isEditing: Boolean = false) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -372,7 +396,7 @@ fun DialogHeader(onDismiss: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "Upload Item",
+            text = if (isEditing) "Edit Item" else "Upload Item",
             style = MaterialTheme.typography.headlineMedium.copy(
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF333333)

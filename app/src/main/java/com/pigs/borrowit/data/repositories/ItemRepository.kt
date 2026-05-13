@@ -21,6 +21,24 @@ class ItemRepository(
 ) {
     private val itemsCollection = firestore.collection("items")
 
+    suspend fun updateItemSuspend(itemId: String, updates: Map<String, Any?>): Result<Unit> {
+        return try {
+            itemsCollection.document(itemId).update(updates).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteItemSuspend(itemId: String): Result<Unit> {
+        return try {
+            itemsCollection.document(itemId).delete().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun uploadImage(imageData: ByteArray): String {
         val fileName = "${UUID.randomUUID()}.jpg"
         val imageRef = storage.reference.child("item_images/$fileName")
