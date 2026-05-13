@@ -124,6 +124,24 @@ class ItemRepository(
         awaitClose { snapshotListener.remove() }
     }
 
+    fun getItemsByCurrentUserFlow(currentUserId: String): Flow<List<Item>> = callbackFlow {
+        val snapshotListener = itemsCollection
+            .whereEqualTo("currentUser", currentUserId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                val items = snapshot?.documents?.mapNotNull { doc ->
+                    mapDocumentToItem(doc)
+                }?.filter { it.owner != currentUserId } ?: emptyList()
+
+                trySend(items)
+            }
+        awaitClose { snapshotListener.remove() }
+    }
+
     fun getItemsByCommunityFlow(communityId: String): Flow<List<Item>> = callbackFlow {
         val snapshotListener = itemsCollection
             .whereEqualTo("communityId", communityId)
@@ -146,12 +164,27 @@ class ItemRepository(
         return try {
             val name = doc.getString("name") ?: ""
             val description = doc.getString("description") ?: ""
-            val owner = doc.getString("owner") ?: ""
+            
+            val ownerRaw = doc.get("owner")
+            val owner = when (ownerRaw) {
+                is com.google.firebase.firestore.DocumentReference -> ownerRaw.id
+                is String -> ownerRaw
+                else -> ""
+            }
+            
             val condition = doc.getString("condition") ?: ""
             val picture = doc.getString("picture") ?: ""
             val pictures = doc.get("pictures") as? List<String> ?: emptyList()
             val availability = parseAvailability(doc.get("availability"))
             val communityId = doc.getString("communityId") ?: ""
+            val status = doc.getString("status") ?: "AVAILABLE"
+            
+            val currentUserRaw = doc.get("currentUser")
+            val currentUser = when (currentUserRaw) {
+                is com.google.firebase.firestore.DocumentReference -> currentUserRaw.id
+                is String -> currentUserRaw
+                else -> ""
+            }
 
             Item(
                 id = doc.id,
@@ -162,7 +195,9 @@ class ItemRepository(
                 picture = picture,
                 pictures = pictures,
                 availability = availability,
-                communityId = communityId
+                communityId = communityId,
+                status = status,
+                currentUser = currentUser
             )
         } catch (e: Exception) {
             Log.e("ItemRepository", "Error parseando documento ${doc.id}", e)

@@ -17,9 +17,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collectLatest
+import com.pigs.borrowit.data.repositories.BorrowRepository
+import com.pigs.borrowit.data.repositories.ItemRepository
+import com.pigs.borrowit.data.repositories.AuthRepository
 import com.pigs.borrowit.screens.components.BorrowItem
 import com.pigs.borrowit.screens.components.ItemsTab
-import com.pigs.borrowit.screens.components.MockData
+import com.pigs.borrowit.screens.components.ItemStatus
 import com.pigs.borrowit.ui.theme.Background
 import com.pigs.borrowit.ui.theme.Primary
 
@@ -29,6 +35,70 @@ fun ManageItemsScreen(
     navController: NavController
 ) {
     var selectedTab by remember { mutableStateOf(ItemsTab.MY_ITEMS) }
+
+    val borrowRepo = remember { BorrowRepository() }
+    val itemRepo = remember { ItemRepository() }
+    val currentUser = remember { FirebaseAuth.getInstance().currentUser }
+
+    var myItemsList by remember { mutableStateOf<List<BorrowItem>>(emptyList()) }
+    var borrowedItemsList by remember { mutableStateOf<List<BorrowItem>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(currentUser) {
+        val uid = currentUser?.uid ?: return@LaunchedEffect
+
+        combine(
+            itemRepo.getItemsByOwnerFlow(uid),
+            itemRepo.getItemsByCurrentUserFlow(uid),
+            borrowRepo.getActiveBorrowsFlow(uid),
+            borrowRepo.getActiveLendsFlow(uid)
+        ) { userItems, heldItems, incomingBorrows, outgoingBorrows ->
+
+            // Map My Items
+            val mappedMyItems = userItems.map { item ->
+                val activeLend = outgoingBorrows
+                    .filter { it.itemId == item.id }
+                    .maxByOrNull { it.requestDate }
+
+                val borrowerNameOrId = if (activeLend?.requesterName?.isNotBlank() == true) {
+                    activeLend.requesterName
+                } else if (item.currentUser.isNotBlank() && item.currentUser != item.owner) {
+                    item.currentUser // Provide the raw UI to be resolved via UI
+                } else null
+
+                BorrowItem(
+                    id = item.id,
+                    name = item.name,
+                    status = if (item.status == "LENT" || activeLend != null || (item.currentUser.isNotBlank() && item.currentUser != item.owner)) ItemStatus.LENT else ItemStatus.AVAILABLE,
+                    associatedUserName = borrowerNameOrId
+                )
+            }
+
+            // Map Borrowed Items (items not owned by you but currently held by you based on Item.currentUser)
+            val mappedBorrowedItems = heldItems.map { item ->
+                val associatedRequest = incomingBorrows.find { it.itemId == item.id }
+
+                val ownerNameOrId = if (associatedRequest?.ownerName?.isNotBlank() == true) {
+                    associatedRequest.ownerName
+                } else if (item.owner.isNotBlank()) {
+                    item.owner // Provide the raw UI to be resolved via UI
+                } else null
+
+                BorrowItem(
+                    id = item.id,
+                    name = item.name,
+                    status = ItemStatus.IN_USE,
+                    associatedUserName = ownerNameOrId
+                )
+            }
+
+            Pair(mappedMyItems, mappedBorrowedItems)
+        }.collectLatest { pairResults ->
+            myItemsList = pairResults.first
+            borrowedItemsList = pairResults.second
+            isLoading = false
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -68,26 +138,36 @@ fun ManageItemsScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             val items = if (selectedTab == ItemsTab.MY_ITEMS) {
-                MockData.myItems
+                myItemsList
             } else {
-                MockData.borrowedItems
+                borrowedItemsList
             }
 
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(items) { item ->
-                    ManageItemCard(
-                        item = item,
-                        onClick = { /* Handle item click if needed */ }
-                    )
+            if (isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
-                
-                item {
-                    Spacer(modifier = Modifier.height(16.dp))
+            } else if (items.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("No items found", color = Color.Gray, fontSize = 16.sp)
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(items) { item ->
+                        ManageItemCard(
+                            item = item,
+                            onClick = { /* Handle item click if needed */ }
+                        )
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
                 }
             }
         }
@@ -153,6 +233,25 @@ fun ManageItemCard(
     item: BorrowItem,
     onClick: () -> Unit
 ) {
+    var resolvedName by remember(item.associatedUserName) {
+        mutableStateOf(item.associatedUserName ?: "")
+    }
+
+    LaunchedEffect(item.associatedUserName) {
+        val nameOrId = item.associatedUserName
+        if (nameOrId != null && nameOrId.length > 20 && !nameOrId.contains(" ")) {
+            // It looks like a Firebase UID, let's fetch the actual name safely off the main flow
+            try {
+                val repo = com.pigs.borrowit.data.repositories.AuthRepository()
+                resolvedName = repo.getUsername(nameOrId)
+            } catch (e: Exception) {
+                resolvedName = "Unknown"
+            }
+        } else if (nameOrId != null) {
+            resolvedName = nameOrId
+        }
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -181,7 +280,7 @@ fun ManageItemCard(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = item.name.first().toString().uppercase(),
+                    text = if (item.name.isNotEmpty()) item.name.first().toString().uppercase() else "?",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     color = Primary
@@ -200,8 +299,15 @@ fun ManageItemCard(
                     color = Color.Black
                 )
                 Spacer(modifier = Modifier.height(4.dp))
+
+                val subtitle = when(item.status) {
+                    ItemStatus.LENT -> if (resolvedName.isNotBlank()) "Prestado a: $resolvedName" else "Prestado"
+                    ItemStatus.IN_USE -> if (resolvedName.isNotBlank()) "De: $resolvedName" else "En uso"
+                    else -> item.status.toDisplayString()
+                }
+
                 Text(
-                    text = item.status.toDisplayString(),
+                    text = subtitle,
                     fontSize = 14.sp,
                     color = Color.Gray
                 )
@@ -220,7 +326,7 @@ fun StatusBadge(status: String) {
         "En uso" -> Color(0xFFFF9800).copy(alpha = 0.15f)
         else -> Color.LightGray.copy(alpha = 0.2f)
     }
-    
+
     val textColor = when (status) {
         "Disponible" -> Color(0xFF2E7D32)
         "Prestado" -> Color(0xFF1976D2)

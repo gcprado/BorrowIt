@@ -48,7 +48,7 @@ fun ItemsScreen(
     val itemsState by remember(currentUser) {
         repository.getItemsByOwnerFlow(currentUser?.uid ?: "")
     }.collectAsState(initial = null)
-    
+
     var showAddItem by remember { mutableStateOf(false) }
     var selectedItem by remember { mutableStateOf<Item?>(null) }
     var showHistory by remember { mutableStateOf(false) }

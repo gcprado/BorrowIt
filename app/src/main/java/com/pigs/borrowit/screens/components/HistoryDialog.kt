@@ -9,6 +9,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -17,6 +20,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.google.firebase.auth.FirebaseAuth
+import com.pigs.borrowit.data.repositories.BorrowRepository
+import java.text.SimpleDateFormat
+import java.util.Locale
+
 import com.pigs.borrowit.ui.theme.Background
 import com.pigs.borrowit.ui.theme.Primary
 
@@ -50,14 +58,14 @@ object MockData {
     )
     
     val myItems = listOf(
-        BorrowItem("1", "Mountain Bike", ItemStatus.LENT),
+        BorrowItem("1", "Mountain Bike", ItemStatus.LENT, "Sarah"),
         BorrowItem("2", "Camping Tent", ItemStatus.AVAILABLE),
         BorrowItem("3", "Power Drill", ItemStatus.AVAILABLE)
     )
     
     val borrowedItems = listOf(
-        BorrowItem("4", "Ladder", ItemStatus.IN_USE),
-        BorrowItem("5", "Vacuum Cleaner", ItemStatus.IN_USE)
+        BorrowItem("4", "Ladder", ItemStatus.IN_USE, "Mike"),
+        BorrowItem("5", "Vacuum Cleaner", ItemStatus.IN_USE, "Anna")
     )
 }
 
@@ -74,13 +82,45 @@ enum class ItemStatus {
 data class BorrowItem(
     val id: String,
     val name: String,
-    val status: ItemStatus
+    val status: ItemStatus,
+    val associatedUserName: String? = null
 )
 
 @Composable
 fun HistoryDialog(
     onDismiss: () -> Unit
 ) {
+    val repository = remember { BorrowRepository() }
+    val currentUser = remember { FirebaseAuth.getInstance().currentUser }
+    var transactions by remember { androidx.compose.runtime.mutableStateOf<List<HistoryTransaction>>(emptyList()) }
+    var isLoading by remember { androidx.compose.runtime.mutableStateOf(true) }
+
+    androidx.compose.runtime.LaunchedEffect(currentUser) {
+        val uid = currentUser?.uid ?: return@LaunchedEffect
+        
+        // Fetch both history (finished) and active (pending/accepted) requests
+        val borrowsFinished = repository.getUserBorrowHistory(uid)
+        val lendsFinished = repository.getUserLendingHistory(uid)
+        val borrowsActive = repository.getUserActiveBorrows(uid)
+        val lendsActive = repository.getUserActiveLends(uid)
+
+        val format = SimpleDateFormat("MMM dd", Locale.getDefault())
+
+        val borrowList = (borrowsFinished + borrowsActive).map { req ->
+            val dateStr = format.format(req.requestDate.toDate())
+            val statusLabel = if (req.status == "pending" || req.status == "accepted") " (Active)" else ""
+            HistoryTransaction(req.id, req.itemName + statusLabel, req.ownerName, dateStr, InteractionType.BORROWED)
+        }
+        val lendList = (lendsFinished + lendsActive).map { req ->
+            val dateStr = format.format(req.requestDate.toDate())
+            val statusLabel = if (req.status == "pending" || req.status == "accepted") " (Active)" else ""
+            HistoryTransaction(req.id, req.itemName + statusLabel, req.requesterName, dateStr, InteractionType.LENT)
+        }
+
+        transactions = (borrowList + lendList).sortedByDescending { it.date }
+        isLoading = false
+    }
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -123,14 +163,24 @@ fun HistoryDialog(
                     thickness = 1.dp
                 )
 
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(MockData.historyTransactions) { transaction ->
-                        HistoryTransactionCard(transaction = transaction)
+                if (isLoading) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                } else if (transactions.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("No history yet", color = Color.Gray, fontSize = 16.sp)
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(transactions) { transaction ->
+                            HistoryTransactionCard(transaction = transaction)
+                        }
                     }
                 }
             }
