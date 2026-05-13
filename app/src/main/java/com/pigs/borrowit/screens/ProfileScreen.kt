@@ -84,7 +84,7 @@ fun ProfileScreen(
         uri?.let { viewModel.uploadImage(currentContext, it, ImageUtils::compressImage) }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(Background)) {
+    Box(modifier = Modifier.fillMaxSize().background(Background).statusBarsPadding()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()

@@ -53,7 +53,7 @@ fun ItemsScreen(
     var selectedItem by remember { mutableStateOf<Item?>(null) }
     var showHistory by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()

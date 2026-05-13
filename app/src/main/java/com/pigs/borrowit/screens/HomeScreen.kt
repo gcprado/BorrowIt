@@ -97,7 +97,7 @@ fun HomeScreen(
 
     var selectedItem by remember { mutableStateOf<Item?>(null) }
 
-    Box(modifier = Modifier.fillMaxSize().background(Background)) {
+    Box(modifier = Modifier.fillMaxSize().background(Background).statusBarsPadding()) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
