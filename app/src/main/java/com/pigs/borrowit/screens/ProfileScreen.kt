@@ -37,7 +37,6 @@ import com.pigs.borrowit.R
 import com.pigs.borrowit.control.ProfileViewModel
 import com.pigs.borrowit.presentation.navigation.GraphRoute
 import com.pigs.borrowit.presentation.navigation.Screen
-import com.pigs.borrowit.screens.components.HistoryDialog
 import com.pigs.borrowit.screens.components.MainBottomNav
 import com.pigs.borrowit.ui.theme.Background
 import com.pigs.borrowit.ui.theme.CardBackground
@@ -58,9 +57,8 @@ fun ProfileScreen(
     val navigateToLogin by viewModel.navigateToLogin.collectAsState()
 
     var username by remember { mutableStateOf("") }
-    val context = LocalContext.current
+    val currentContext = LocalContext.current
     val scrollState = rememberScrollState()
-    var showHistory by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(userState) {
@@ -83,7 +81,7 @@ fun ProfileScreen(
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { viewModel.uploadImage(context, it, ImageUtils::compressImage) }
+        uri?.let { viewModel.uploadImage(currentContext, it, ImageUtils::compressImage) }
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Background)) {
@@ -214,22 +212,6 @@ fun ProfileScreen(
 
             // Options List
             ProfileOption(
-                icon = Icons.Default.Inventory2,
-                title = "Manage items",
-                onClick = { navController.navigate(Screen.ManageItems.route) }
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            ProfileOption(
-                icon = Icons.Default.History,
-                title = "History",
-                onClick = { showHistory = true }
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            ProfileOption(
                 icon = Icons.Default.Save,
                 title = "Save changes",
                 onClick = { viewModel.saveUsername(username) },
@@ -241,7 +223,7 @@ fun ProfileScreen(
             ProfileOption(
                 icon = Icons.AutoMirrored.Filled.Logout,
                 title = "Log out",
-                onClick = { viewModel.onLogout(context) }
+                onClick = { viewModel.onLogout(currentContext) }
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -277,9 +259,6 @@ fun ProfileScreen(
 
         MainBottomNav(navController, modifier = Modifier.align(Alignment.BottomCenter))
 
-        if (showHistory) {
-            HistoryDialog(onDismiss = { showHistory = false })
-        }
 
         // Diálogo de confirmación para eliminar cuenta
         if (showDeleteDialog) {

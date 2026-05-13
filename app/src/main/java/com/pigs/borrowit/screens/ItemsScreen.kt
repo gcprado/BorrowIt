@@ -9,6 +9,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,7 +32,10 @@ import com.pigs.borrowit.screens.components.MainBottomNav
 import com.pigs.borrowit.screens.components.UploadItemDialog
 import com.pigs.borrowit.screens.components.ItemGridCard
 import com.pigs.borrowit.screens.components.ItemDetailDialog
+import com.pigs.borrowit.screens.components.HistoryDialog
+import com.pigs.borrowit.presentation.navigation.Screen
 import com.pigs.borrowit.ui.theme.Primary
+import com.pigs.borrowit.ui.theme.CardBackground
 
 @Composable
 fun ItemsScreen(
@@ -45,6 +51,7 @@ fun ItemsScreen(
     
     var showAddItem by remember { mutableStateOf(false) }
     var selectedItem by remember { mutableStateOf<Item?>(null) }
+    var showHistory by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -74,6 +81,76 @@ fun ItemsScreen(
                 )
             }
 
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // Options List
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Surface(
+                    onClick = { navController.navigate(Screen.ManageItems.route) },
+                    color = CardBackground,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(64.dp),
+                    tonalElevation = 2.dp,
+                    shadowElevation = 2.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Inventory2,
+                            contentDescription = null,
+                            tint = Primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Manage",
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
+                Surface(
+                    onClick = { showHistory = true },
+                    color = CardBackground,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(64.dp),
+                    tonalElevation = 2.dp,
+                    shadowElevation = 2.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.History,
+                            contentDescription = null,
+                            tint = Primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "History",
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+            
             Spacer(modifier = Modifier.height(24.dp))
 
             when (val items = itemsState) {
@@ -133,6 +210,10 @@ fun ItemsScreen(
                 item = item,
                 onDismiss = { selectedItem = null }
             )
+        }
+        
+        if (showHistory) {
+            HistoryDialog(onDismiss = { showHistory = false })
         }
         
         MainBottomNav(navController, modifier = Modifier.align(Alignment.BottomCenter))
