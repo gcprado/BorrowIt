@@ -8,6 +8,7 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import android.util.Log
 
 class BorrowRepository {
     private val db = FirebaseFirestore.getInstance()
@@ -36,11 +37,15 @@ class BorrowRepository {
                 }
                 else -> ""
             }
-            
-            BorrowRequest(
+
+            val request = BorrowRequest(
                 id = doc.id,
-                communityId = doc.getString("communityId") ?: "",
-                itemId = doc.getString("itemId") ?: "",
+                communityId = try { doc.getString("communityId") ?: "" } catch (e: Exception) { 
+                    try { (doc.get("communityId") as? com.google.firebase.firestore.DocumentReference)?.id ?: "" } catch (e2: Exception) { "" }
+                },
+                itemId = try { doc.getString("itemId") ?: "" } catch (e: Exception) { 
+                    try { (doc.get("itemId") as? com.google.firebase.firestore.DocumentReference)?.id ?: "" } catch (e2: Exception) { "" }
+                },
                 itemName = doc.getString("itemName") ?: "",
                 ownerId = ownerId,
                 ownerName = doc.getString("ownerName") ?: "",
@@ -51,7 +56,10 @@ class BorrowRepository {
                 startDate = doc.getTimestamp("startDate") ?: Timestamp.now(),
                 endDate = doc.getTimestamp("endDate") ?: Timestamp.now()
             )
+            Log.d("BorrowRepoDebug", "Mapped doc ${doc.id}: owner=$ownerId, requester=$requesterId, status=${request.status}")
+            request
         } catch (e: Exception) {
+            Log.e("BorrowRepoDebug", "Error mapping doc ${doc.id}", e)
             null
         }
     }
@@ -95,52 +103,66 @@ class BorrowRepository {
 
     suspend fun getUserPastBorrows(userId: String): List<BorrowRequest> {
         return try {
-            val userRef = db.collection("users").document(userId)
             val snapshot = requestsRef
-                .whereIn("requesterId", listOf(userId, userRef, "users/$userId", "$userId ", " $userId"))
+                .whereEqualTo("status", "finished")
                 .get()
                 .await()
-            snapshot.documents.mapNotNull { mapToBorrowRequest(it) }.filter { it.status == "finished" }
+            val mapped = snapshot.documents.mapNotNull { mapToBorrowRequest(it) }
+            val filtered = mapped.filter { it.requesterId == userId }
+            Log.d("BorrowRepoDebug", "getUserPastBorrows for $userId: found ${mapped.size} finished, filtered to ${filtered.size}")
+            filtered
         } catch (e: Exception) {
+            Log.e("BorrowRepoDebug", "getUserPastBorrows error", e)
             emptyList()
         }
     }
 
     suspend fun getUserPastLends(userId: String): List<BorrowRequest> {
         return try {
-            val userRef = db.collection("users").document(userId)
             val snapshot = requestsRef
-                .whereIn("ownerId", listOf(userId, userRef, "users/$userId", "$userId ", " $userId"))
+                .whereEqualTo("status", "finished")
                 .get()
                 .await()
-            snapshot.documents.mapNotNull { mapToBorrowRequest(it) }.filter { it.status == "finished" }
+            val mapped = snapshot.documents.mapNotNull { mapToBorrowRequest(it) }
+            val filtered = mapped.filter { it.ownerId == userId }
+            Log.d("BorrowRepoDebug", "getUserPastLends for $userId: found ${mapped.size} finished, filtered to ${filtered.size}")
+            filtered
         } catch (e: Exception) {
+            Log.e("BorrowRepoDebug", "getUserPastLends error", e)
             emptyList()
         }
     }
 
     suspend fun getUserActiveBorrows(userId: String): List<BorrowRequest> {
         return try {
-            val userRef = db.collection("users").document(userId)
             val snapshot = requestsRef
-                .whereIn("requesterId", listOf(userId, userRef, "users/$userId", "$userId ", " $userId"))
                 .get()
                 .await()
-            snapshot.documents.mapNotNull { mapToBorrowRequest(it) }.filter { it.status == "pending" || it.status == "accepted" }
+            val mapped = snapshot.documents.mapNotNull { mapToBorrowRequest(it) }
+            val filtered = mapped.filter {
+                it.requesterId == userId && (it.status == "pending" || it.status == "accepted")
+            }
+            Log.d("BorrowRepoDebug", "getUserActiveBorrows for $userId: filtered to ${filtered.size}")
+            filtered
         } catch (e: Exception) {
+            Log.e("BorrowRepoDebug", "getUserActiveBorrows error", e)
             emptyList()
         }
     }
 
     suspend fun getUserActiveLends(userId: String): List<BorrowRequest> {
         return try {
-            val userRef = db.collection("users").document(userId)
             val snapshot = requestsRef
-                .whereIn("ownerId", listOf(userId, userRef, "users/$userId", "$userId ", " $userId"))
                 .get()
                 .await()
-            snapshot.documents.mapNotNull { mapToBorrowRequest(it) }.filter { it.status == "pending" || it.status == "accepted" }
+            val mapped = snapshot.documents.mapNotNull { mapToBorrowRequest(it) }
+            val filtered = mapped.filter {
+                it.ownerId == userId && (it.status == "pending" || it.status == "accepted")
+            }
+            Log.d("BorrowRepoDebug", "getUserActiveLends for $userId: filtered to ${filtered.size}")
+            filtered
         } catch (e: Exception) {
+            Log.e("BorrowRepoDebug", "getUserActiveLends error", e)
             emptyList()
         }
     }

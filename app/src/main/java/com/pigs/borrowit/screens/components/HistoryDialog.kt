@@ -24,6 +24,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.pigs.borrowit.data.repositories.BorrowRepository
 import java.text.SimpleDateFormat
 import java.util.Locale
+import android.util.Log
 
 import com.pigs.borrowit.ui.theme.Background
 import com.pigs.borrowit.ui.theme.Primary
@@ -97,6 +98,7 @@ fun HistoryDialog(
 
     androidx.compose.runtime.LaunchedEffect(currentUser) {
         val uid = currentUser?.uid ?: return@LaunchedEffect
+        Log.d("HistoryDebug", "LaunchedEffect started for user $uid")
         
         // Fetch both history (finished) and active (pending/accepted) requests
         val borrowsFinished = repository.getUserPastBorrows(uid)
@@ -104,20 +106,25 @@ fun HistoryDialog(
         val borrowsActive = repository.getUserActiveBorrows(uid)
         val lendsActive = repository.getUserActiveLends(uid)
 
+        Log.d("HistoryDebug", "borrowsFinished: ${borrowsFinished.size}, lendsFinished: ${lendsFinished.size}, borrowsActive: ${borrowsActive.size}, lendsActive: ${lendsActive.size}")
+
         val format = SimpleDateFormat("MMM dd", Locale.getDefault())
 
         val borrowList = (borrowsFinished + borrowsActive).map { req ->
             val dateStr = format.format(req.requestDate.toDate())
             val statusLabel = if (req.status == "pending" || req.status == "accepted") " (Active)" else ""
-            HistoryTransaction(req.id, req.itemName + statusLabel, req.ownerName, dateStr, InteractionType.BORROWED)
+            val name = req.ownerName.takeIf { it.isNotBlank() } ?: req.ownerId.takeIf { it.isNotBlank() } ?: "Unknown"
+            HistoryTransaction(req.id, req.itemName + statusLabel, name, dateStr, InteractionType.BORROWED)
         }
         val lendList = (lendsFinished + lendsActive).map { req ->
             val dateStr = format.format(req.requestDate.toDate())
             val statusLabel = if (req.status == "pending" || req.status == "accepted") " (Active)" else ""
-            HistoryTransaction(req.id, req.itemName + statusLabel, req.requesterName, dateStr, InteractionType.LENT)
+            val name = req.requesterName.takeIf { it.isNotBlank() } ?: req.requesterId.takeIf { it.isNotBlank() } ?: "Unknown"
+            HistoryTransaction(req.id, req.itemName + statusLabel, name, dateStr, InteractionType.LENT)
         }
 
         transactions = (borrowList + lendList).sortedByDescending { it.date }
+        Log.d("HistoryDebug", "Total transactions mapped: ${transactions.size}")
         isLoading = false
     }
 
