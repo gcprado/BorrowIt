@@ -98,10 +98,9 @@ class BorrowRepository {
             val userRef = db.collection("users").document(userId)
             val snapshot = requestsRef
                 .whereIn("requesterId", listOf(userId, userRef, "users/$userId", "$userId ", " $userId"))
-                .whereEqualTo("status", "finished")
                 .get()
                 .await()
-            snapshot.documents.mapNotNull { mapToBorrowRequest(it) }
+            snapshot.documents.mapNotNull { mapToBorrowRequest(it) }.filter { it.status == "finished" }
         } catch (e: Exception) {
             emptyList()
         }
@@ -112,10 +111,9 @@ class BorrowRepository {
             val userRef = db.collection("users").document(userId)
             val snapshot = requestsRef
                 .whereIn("ownerId", listOf(userId, userRef, "users/$userId", "$userId ", " $userId"))
-                .whereEqualTo("status", "finished")
                 .get()
                 .await()
-            snapshot.documents.mapNotNull { mapToBorrowRequest(it) }
+            snapshot.documents.mapNotNull { mapToBorrowRequest(it) }.filter { it.status == "finished" }
         } catch (e: Exception) {
             emptyList()
         }
@@ -126,10 +124,9 @@ class BorrowRepository {
             val userRef = db.collection("users").document(userId)
             val snapshot = requestsRef
                 .whereIn("requesterId", listOf(userId, userRef, "users/$userId", "$userId ", " $userId"))
-                .whereIn("status", listOf("pending", "accepted"))
                 .get()
                 .await()
-            snapshot.documents.mapNotNull { mapToBorrowRequest(it) }
+            snapshot.documents.mapNotNull { mapToBorrowRequest(it) }.filter { it.status == "pending" || it.status == "accepted" }
         } catch (e: Exception) {
             emptyList()
         }
@@ -140,10 +137,9 @@ class BorrowRepository {
             val userRef = db.collection("users").document(userId)
             val snapshot = requestsRef
                 .whereIn("ownerId", listOf(userId, userRef, "users/$userId", "$userId ", " $userId"))
-                .whereIn("status", listOf("pending", "accepted"))
                 .get()
                 .await()
-            snapshot.documents.mapNotNull { mapToBorrowRequest(it) }
+            snapshot.documents.mapNotNull { mapToBorrowRequest(it) }.filter { it.status == "pending" || it.status == "accepted" }
         } catch (e: Exception) {
             emptyList()
         }
@@ -179,7 +175,11 @@ class BorrowRepository {
 
     suspend fun updateRequestStatus(requestId: String, newStatus: String): Result<Unit> {
         return try {
-            requestsRef.document(requestId).update("status", newStatus).await()
+            val updates = mutableMapOf<String, Any>("status" to newStatus)
+            if (newStatus == "finished") {
+                updates["endDate"] = Timestamp.now()
+            }
+            requestsRef.document(requestId).update(updates).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -199,7 +199,10 @@ class BorrowRepository {
             for (query in queries) {
                 val snapshot = query.get().await()
                 for (doc in snapshot.documents) {
-                    doc.reference.update("status", "finished").await()
+                    doc.reference.update(
+                        "status", "finished",
+                        "endDate", Timestamp.now()
+                    ).await()
                 }
             }
         } catch (e: Exception) {
