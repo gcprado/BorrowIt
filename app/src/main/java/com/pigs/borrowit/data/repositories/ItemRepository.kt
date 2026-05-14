@@ -107,8 +107,9 @@ class ItemRepository(
     }
 
     fun getItemsByOwnerFlow(ownerId: String): Flow<List<Item>> = callbackFlow {
+        val userRef = firestore.collection("users").document(ownerId)
         val snapshotListener = itemsCollection
-            .whereEqualTo("owner", ownerId)
+            .whereIn("owner", listOf(ownerId, userRef))
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     close(error)
@@ -125,8 +126,9 @@ class ItemRepository(
     }
 
     fun getItemsByCurrentUserFlow(currentUserId: String): Flow<List<Item>> = callbackFlow {
+        val userRef = firestore.collection("users").document(currentUserId)
         val snapshotListener = itemsCollection
-            .whereEqualTo("currentUser", currentUserId)
+            .whereIn("currentUser", listOf(currentUserId, userRef))
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     close(error)

@@ -71,10 +71,39 @@ class BorrowRepository {
         }
     }
 
+    suspend fun getUserPastBorrows(userId: String): List<BorrowRequest> {
+        return try {
+            val userRef = db.collection("users").document(userId)
+            val snapshot = requestsRef
+                .whereIn("requesterId", listOf(userId, userRef))
+                .whereEqualTo("status", "finished")
+                .get()
+                .await()
+            snapshot.documents.mapNotNull { mapToBorrowRequest(it) }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun getUserPastLends(userId: String): List<BorrowRequest> {
+        return try {
+            val userRef = db.collection("users").document(userId)
+            val snapshot = requestsRef
+                .whereIn("ownerId", listOf(userId, userRef))
+                .whereEqualTo("status", "finished")
+                .get()
+                .await()
+            snapshot.documents.mapNotNull { mapToBorrowRequest(it) }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
     suspend fun getUserActiveBorrows(userId: String): List<BorrowRequest> {
         return try {
+            val userRef = db.collection("users").document(userId)
             val snapshot = requestsRef
-                .whereEqualTo("requesterId", userId)
+                .whereIn("requesterId", listOf(userId, userRef))
                 .whereIn("status", listOf("pending", "accepted"))
                 .get()
                 .await()
@@ -86,8 +115,9 @@ class BorrowRepository {
 
     suspend fun getUserActiveLends(userId: String): List<BorrowRequest> {
         return try {
+            val userRef = db.collection("users").document(userId)
             val snapshot = requestsRef
-                .whereEqualTo("ownerId", userId)
+                .whereIn("ownerId", listOf(userId, userRef))
                 .whereIn("status", listOf("pending", "accepted"))
                 .get()
                 .await()
@@ -98,8 +128,9 @@ class BorrowRepository {
     }
 
     fun getActiveBorrowsFlow(userId: String): Flow<List<BorrowRequest>> = callbackFlow {
+        val userRef = db.collection("users").document(userId)
         val listener = requestsRef
-            .whereEqualTo("requesterId", userId)
+            .whereIn("requesterId", listOf(userId, userRef))
             .addSnapshotListener { snapshot, e ->
                 if (e != null) { close(e); return@addSnapshotListener }
                 val items = snapshot?.documents?.mapNotNull { mapToBorrowRequest(it) }
@@ -111,8 +142,9 @@ class BorrowRepository {
     }
 
     fun getActiveLendsFlow(userId: String): Flow<List<BorrowRequest>> = callbackFlow {
+        val userRef = db.collection("users").document(userId)
         val listener = requestsRef
-            .whereEqualTo("ownerId", userId)
+            .whereIn("ownerId", listOf(userId, userRef))
             .addSnapshotListener { snapshot, e ->
                 if (e != null) { close(e); return@addSnapshotListener }
                 val items = snapshot?.documents?.mapNotNull { mapToBorrowRequest(it) }
