@@ -109,7 +109,7 @@ class ItemRepository(
     fun getItemsByOwnerFlow(ownerId: String): Flow<List<Item>> = callbackFlow {
         val userRef = firestore.collection("users").document(ownerId)
         val snapshotListener = itemsCollection
-            .whereIn("owner", listOf(ownerId, userRef))
+            .whereIn("owner", listOf(ownerId, userRef, "users/$ownerId", "$ownerId ", " $ownerId"))
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     close(error)
@@ -128,7 +128,7 @@ class ItemRepository(
     fun getItemsByCurrentUserFlow(currentUserId: String): Flow<List<Item>> = callbackFlow {
         val userRef = firestore.collection("users").document(currentUserId)
         val snapshotListener = itemsCollection
-            .whereIn("currentUser", listOf(currentUserId, userRef))
+            .whereIn("currentUser", listOf(currentUserId, userRef, "users/$currentUserId", "$currentUserId ", " $currentUserId"))
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     close(error)
@@ -170,7 +170,11 @@ class ItemRepository(
             val ownerRaw = doc.get("owner")
             val owner = when (ownerRaw) {
                 is com.google.firebase.firestore.DocumentReference -> ownerRaw.id
-                is String -> ownerRaw
+                is String -> {
+                    var str = ownerRaw.trim()
+                    if (str.startsWith("users/")) str = str.substringAfter("users/")
+                    str
+                }
                 else -> ""
             }
             
@@ -184,7 +188,11 @@ class ItemRepository(
             val currentUserRaw = doc.get("currentUser")
             val currentUser = when (currentUserRaw) {
                 is com.google.firebase.firestore.DocumentReference -> currentUserRaw.id
-                is String -> currentUserRaw
+                is String -> {
+                    var str = currentUserRaw.trim()
+                    if (str.startsWith("users/")) str = str.substringAfter("users/")
+                    str
+                }
                 else -> ""
             }
 

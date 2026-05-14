@@ -99,8 +99,8 @@ fun HistoryDialog(
         val uid = currentUser?.uid ?: return@LaunchedEffect
         
         // Fetch both history (finished) and active (pending/accepted) requests
-        val borrowsFinished = repository.getUserBorrowHistory(uid)
-        val lendsFinished = repository.getUserLendingHistory(uid)
+        val borrowsFinished = repository.getUserPastBorrows(uid)
+        val lendsFinished = repository.getUserPastLends(uid)
         val borrowsActive = repository.getUserActiveBorrows(uid)
         val lendsActive = repository.getUserActiveLends(uid)
 
