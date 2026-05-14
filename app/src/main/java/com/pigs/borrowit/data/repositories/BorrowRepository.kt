@@ -185,4 +185,25 @@ class BorrowRepository {
             Result.failure(e)
         }
     }
+
+    suspend fun finishRequestsForItem(itemId: String) {
+        try {
+            val db = FirebaseFirestore.getInstance()
+            val itemRef = db.collection("items").document(itemId)
+            
+            val queries = listOf(
+                db.collection("borrow_requests").whereEqualTo("itemId", itemId).whereEqualTo("status", "accepted"),
+                db.collection("borrow_requests").whereEqualTo("itemId", itemRef).whereEqualTo("status", "accepted")
+            )
+            
+            for (query in queries) {
+                val snapshot = query.get().await()
+                for (doc in snapshot.documents) {
+                    doc.reference.update("status", "finished").await()
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 }

@@ -22,14 +22,13 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
 import com.pigs.borrowit.data.repositories.BorrowRepository
 import com.pigs.borrowit.data.repositories.ItemRepository
-import com.pigs.borrowit.data.repositories.AuthRepository
-import com.pigs.borrowit.screens.components.BorrowItem
 import com.pigs.borrowit.screens.components.ItemsTab
-import com.pigs.borrowit.screens.components.ItemStatus
 import com.pigs.borrowit.ui.theme.Background
 import com.pigs.borrowit.ui.theme.Primary
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, DelicateCoroutinesApi::class)
 @Composable
 fun ManageItemsScreen(
     navController: NavController
@@ -40,8 +39,8 @@ fun ManageItemsScreen(
     val itemRepo = remember { ItemRepository() }
     val currentUser = remember { FirebaseAuth.getInstance().currentUser }
 
-    var myItemsList by remember { mutableStateOf<List<BorrowItem>>(emptyList()) }
-    var borrowedItemsList by remember { mutableStateOf<List<BorrowItem>>(emptyList()) }
+    var myItemsList: List<BorrowItem> by remember { mutableStateOf<List<BorrowItem>>(emptyList()) }
+    var borrowedItemsList: List<BorrowItem> by remember { mutableStateOf<List<BorrowItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(currentUser) {
@@ -70,7 +69,9 @@ fun ManageItemsScreen(
                     id = item.id,
                     name = item.name,
                     status = if (item.status == "LENT" || activeLend != null || (item.currentUser.isNotBlank() && item.currentUser != item.owner)) ItemStatus.LENT else ItemStatus.AVAILABLE,
-                    associatedUserName = borrowerNameOrId
+                    associatedUserName = borrowerNameOrId,
+                    activeRequestId = activeLend?.id,
+                    ownerId = item.owner
                 )
             }
 
@@ -88,7 +89,9 @@ fun ManageItemsScreen(
                     id = item.id,
                     name = item.name,
                     status = ItemStatus.IN_USE,
-                    associatedUserName = ownerNameOrId
+                    associatedUserName = ownerNameOrId,
+                    activeRequestId = associatedRequest?.id,
+                    ownerId = item.owner
                 )
             }
 
@@ -143,6 +146,51 @@ fun ManageItemsScreen(
                 borrowedItemsList
             }
 
+            var itemToReturn by remember { mutableStateOf<BorrowItem?>(null) }
+            var isReturning by remember { mutableStateOf(false) }
+
+            if (itemToReturn != null) {
+                AlertDialog(
+                    onDismissRequest = { if (!isReturning) itemToReturn = null },
+                    title = { Text("End Loan") },
+                    text = { Text("Do you want to mark this item as returned?") },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                isReturning = true
+                                val currentItem = itemToReturn!!
+                                kotlinx.coroutines.GlobalScope.launch {
+                                    if (currentItem.activeRequestId != null) {
+                                        borrowRepo.updateRequestStatus(currentItem.activeRequestId, "finished")
+                                    }
+                                    borrowRepo.finishRequestsForItem(currentItem.id)
+                                    itemRepo.updateItemSuspend(
+                                        currentItem.id,
+                                        mapOf(
+                                            "currentUser" to currentItem.ownerId,
+                                            "status" to "AVAILABLE"
+                                        )
+                                    )
+                                    itemToReturn = null
+                                    isReturning = false
+                                }
+                            },
+                            enabled = !isReturning
+                        ) {
+                            Text("Confirm")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = { itemToReturn = null },
+                            enabled = !isReturning
+                        ) {
+                            Text("Cancel")
+                        }
+                    }
+                )
+            }
+
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
@@ -155,13 +203,17 @@ fun ManageItemsScreen(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 16.dp),
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(items) { item ->
                         ManageItemCard(
                             item = item,
-                            onClick = { /* Handle item click if needed */ }
+                            onClick = { 
+                                if (item.status == ItemStatus.LENT || item.status == ItemStatus.IN_USE) {
+                                    itemToReturn = item
+                                }
+                            }
                         )
                     }
 
@@ -350,3 +402,22 @@ fun StatusBadge(status: String) {
         )
     }
 }
+
+enum class ItemStatus {
+    AVAILABLE, LENT, IN_USE;
+    
+    fun toDisplayString() = when(this) {
+        AVAILABLE -> "Available"
+        LENT -> "Borrowed"
+        IN_USE -> "In use"
+    }
+}
+
+data class BorrowItem(
+    val id: String,
+    val name: String,
+    val status: ItemStatus,
+    val associatedUserName: String? = null,
+    val activeRequestId: String? = null,
+    val ownerId: String = ""
+)
