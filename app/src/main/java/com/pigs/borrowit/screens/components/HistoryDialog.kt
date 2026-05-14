@@ -22,6 +22,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.google.firebase.auth.FirebaseAuth
 import com.pigs.borrowit.data.repositories.BorrowRepository
+import com.pigs.borrowit.data.repositories.AuthRepository
 import java.text.SimpleDateFormat
 import java.util.Locale
 import android.util.Log
@@ -99,7 +100,9 @@ fun HistoryDialog(
     androidx.compose.runtime.LaunchedEffect(currentUser) {
         val uid = currentUser?.uid ?: return@LaunchedEffect
         Log.d("HistoryDebug", "LaunchedEffect started for user $uid")
-        
+
+        val authRepo = com.pigs.borrowit.data.repositories.AuthRepository()
+
         // Fetch both history (finished) and active (pending/accepted) requests
         val borrowsFinished = repository.getUserPastBorrows(uid)
         val lendsFinished = repository.getUserPastLends(uid)
@@ -113,13 +116,19 @@ fun HistoryDialog(
         val borrowList = (borrowsFinished + borrowsActive).map { req ->
             val dateStr = format.format(req.requestDate.toDate())
             val statusLabel = if (req.status == "pending" || req.status == "accepted") " (Active)" else ""
-            val name = req.ownerName.takeIf { it.isNotBlank() } ?: req.ownerId.takeIf { it.isNotBlank() } ?: "Unknown"
+            var name = req.ownerName.takeIf { it.isNotBlank() } ?: req.ownerId.takeIf { it.isNotBlank() } ?: "Unknown"
+            if (name == req.ownerId || (name.length >= 20 && !name.contains(" "))) {
+                try { name = authRepo.getUsername(req.ownerId) } catch (e: Exception) {}
+            }
             HistoryTransaction(req.id, req.itemName + statusLabel, name, dateStr, InteractionType.BORROWED)
         }
         val lendList = (lendsFinished + lendsActive).map { req ->
             val dateStr = format.format(req.requestDate.toDate())
             val statusLabel = if (req.status == "pending" || req.status == "accepted") " (Active)" else ""
-            val name = req.requesterName.takeIf { it.isNotBlank() } ?: req.requesterId.takeIf { it.isNotBlank() } ?: "Unknown"
+            var name = req.requesterName.takeIf { it.isNotBlank() } ?: req.requesterId.takeIf { it.isNotBlank() } ?: "Unknown"
+            if (name == req.requesterId || (name.length >= 20 && !name.contains(" "))) {
+                try { name = authRepo.getUsername(req.requesterId) } catch (e: Exception) {}
+            }
             HistoryTransaction(req.id, req.itemName + statusLabel, name, dateStr, InteractionType.LENT)
         }
 
