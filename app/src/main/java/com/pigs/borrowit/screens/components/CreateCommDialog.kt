@@ -175,8 +175,10 @@ fun CreateCommDialog(
                     OutlinedTextField(
                         value = commName,
                         onValueChange = {
-                            commName = it
-                            if (attemptedSubmit) nameError = if (it.isBlank()) "Name is required" else ""
+                            if (!it.contains("\n")) {
+                                commName = it
+                                if (attemptedSubmit) nameError = if (it.trim().isBlank()) "Name is required" else ""
+                            }
                         },
                         label = { Text("Community Name") },
                         modifier = Modifier.fillMaxWidth(),
@@ -186,6 +188,7 @@ fun CreateCommDialog(
                                 Text(text = nameError)
                             }
                         },
+                        singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Primary,
                             focusedLabelColor = Primary
@@ -198,18 +201,24 @@ fun CreateCommDialog(
                     OutlinedTextField(
                         value = commDescription,
                         onValueChange = {
-                            commDescription = it
-                            if (attemptedSubmit) descriptionError = if (it.isBlank()) "Description is required" else ""
+                            val lines = it.count { char -> char == '\n' } + 1
+                            if (lines <= 3) {
+                                commDescription = it
+                                if (attemptedSubmit) descriptionError = if (it.trim().isBlank()) "Description is required" else ""
+                            }
                         },
                         label = { Text("Description") },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(120.dp),
                         singleLine = false,
+                        maxLines = 3,
                         isError = descriptionError.isNotEmpty(),
                         supportingText = {
                             if (descriptionError.isNotEmpty()) {
                                 Text(text = descriptionError)
+                            } else {
+                                Text("Max 3 lines")
                             }
                         },
                         colors = OutlinedTextFieldDefaults.colors(
@@ -237,11 +246,13 @@ fun CreateCommDialog(
                 Button(
                     onClick = {
                         attemptedSubmit = true
-                        val isNameValid = commName.isNotBlank()
-                        val isDescValid = commDescription.isNotBlank()
+                        val trimmedName = commName.trim()
+                        val trimmedDesc = commDescription.trim()
+                        val isNameValid = trimmedName.isNotBlank()
+                        val isDescValid = trimmedDesc.isNotBlank()
                         
                         if (isNameValid && isDescValid) {
-                            onCreate(commName, commDescription, bannerImageUri, profileImageUri)
+                            onCreate(trimmedName, trimmedDesc, bannerImageUri, profileImageUri)
                             onDismiss()
                         } else {
                             nameError = if (!isNameValid) "Name is required" else ""

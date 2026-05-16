@@ -26,10 +26,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import coil.compose.AsyncImage
 import com.google.firebase.Timestamp
 import com.pigs.borrowit.data.model.Community
@@ -40,7 +42,6 @@ import com.pigs.borrowit.screens.components.MainBottomNav
 import com.pigs.borrowit.ui.theme.Primary
 import com.pigs.borrowit.utils.ImageUtils
 import kotlinx.coroutines.launch
-import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
 enum class SortType {
@@ -56,13 +57,13 @@ fun CommsScreen(navController: NavController) {
     var communities by remember { mutableStateOf<List<Community>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var selectedSort by remember { mutableStateOf(SortType.MODIFICATION) }
+    var searchQuery by remember { mutableStateOf("") }
     var showCreateDialog by remember { mutableStateOf(false) }
     var showSearchDialog by remember { mutableStateOf(false) }
     val gridState = rememberLazyGridState()
 
     val context = LocalContext.current
 
-    // Fetch communities from Firestore
     val loadCommunities = {
         scope.launch {
             isLoading = true
@@ -74,21 +75,27 @@ fun CommsScreen(navController: NavController) {
         }
     }
 
-    LaunchedEffect(Unit) {
+    // Refresh when returning to this screen
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    LaunchedEffect(navBackStackEntry) {
         loadCommunities()
     }
 
-    val sortedCommunities = remember(communities, selectedSort) {
+    val filteredCommunities = remember(communities, searchQuery) {
+        if (searchQuery.isBlank()) communities
+        else communities.filter { it.name.contains(searchQuery, ignoreCase = true) || it.description.contains(searchQuery, ignoreCase = true) }
+    }
+
+    val sortedCommunities = remember(filteredCommunities, selectedSort) {
         when (selectedSort) {
-            SortType.ALPHABETICAL -> communities.sortedBy { it.name.lowercase() }
-            SortType.CREATION -> communities.sortedByDescending { it.createdAt }
-            SortType.MODIFICATION -> communities.sortedByDescending { it.updatedAt }
+            SortType.ALPHABETICAL -> filteredCommunities.sortedBy { it.name.lowercase() }
+            SortType.CREATION -> filteredCommunities.sortedByDescending { it.createdAt }
+            SortType.MODIFICATION -> filteredCommunities.sortedByDescending { it.updatedAt }
         }
     }
 
-    // Scroll to top when sorting changes
-    LaunchedEffect(selectedSort) {
-        if (communities.isNotEmpty()) {
+    LaunchedEffect(selectedSort, searchQuery) {
+        if (sortedCommunities.isNotEmpty()) {
             gridState.scrollToItem(0)
         }
     }
@@ -102,7 +109,6 @@ fun CommsScreen(navController: NavController) {
         ) {
             Spacer(modifier = Modifier.height(24.dp))
             
-            // Header
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -123,7 +129,23 @@ fun CommsScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Sort Buttons
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Search communities...", color = Color.Gray) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Primary) },
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Primary,
+                    unfocusedBorderColor = Color.LightGray,
+                    cursorColor = Primary
+                )
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -141,12 +163,15 @@ fun CommsScreen(navController: NavController) {
                 Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = Primary)
                 }
-            } else if (communities.isEmpty()) {
+            } else if (sortedCommunities.isEmpty()) {
                 Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text("You don't have any communities yet.", color = Color.Gray)
+                    Text(
+                        if (searchQuery.isEmpty()) "You don't have any communities yet." else "No communities match your search.",
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center
+                    )
                 }
             } else {
-                // Grid of Communities
                 LazyVerticalGrid(
                     state = gridState,
                     columns = GridCells.Fixed(2),
@@ -156,18 +181,17 @@ fun CommsScreen(navController: NavController) {
                 ) {
                     items(sortedCommunities, key = { it.id }) { community ->
                         CommunityCard(community) {
-                            val encodedId = URLEncoder.encode(community.id, StandardCharsets.UTF_8.toString())
-                            val encodedName = URLEncoder.encode(community.name, StandardCharsets.UTF_8.toString())
-                            val encodedDescription = URLEncoder.encode(community.description, StandardCharsets.UTF_8.toString())
+                            val encodedId = Uri.encode(community.id)
+                            val encodedName = Uri.encode(community.name)
+                            val encodedDescription = Uri.encode(community.description)
                             
-                            // Navegación con Query Parameters opcionales
                             var route = "communityDetail/$encodedId/$encodedName/$encodedDescription"
                             val params = mutableListOf<String>()
                             if (!community.bannerUrl.isNullOrEmpty()) {
-                                params.add("bannerUrl=${URLEncoder.encode(community.bannerUrl, StandardCharsets.UTF_8.toString())}")
+                                params.add("bannerUrl=${Uri.encode(community.bannerUrl)}")
                             }
                             if (!community.profileUrl.isNullOrEmpty()) {
-                                params.add("profileUrl=${URLEncoder.encode(community.profileUrl, StandardCharsets.UTF_8.toString())}")
+                                params.add("profileUrl=${Uri.encode(community.profileUrl)}")
                             }
                             
                             if (params.isNotEmpty()) {
@@ -181,7 +205,6 @@ fun CommsScreen(navController: NavController) {
             }
         }
 
-        // Action Buttons (Search and Create)
         Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -194,7 +217,7 @@ fun CommsScreen(navController: NavController) {
                 contentColor = Primary,
                 shape = CircleShape
             ) {
-                Icon(Icons.Default.Search, contentDescription = "Search Community")
+                Icon(Icons.Default.Groups, contentDescription = "Join Community")
             }
 
             FloatingActionButton(
@@ -207,7 +230,6 @@ fun CommsScreen(navController: NavController) {
             }
         }
 
-        // Navbar
         MainBottomNav(
             navController = navController,
             modifier = Modifier.align(Alignment.BottomCenter)
@@ -218,15 +240,13 @@ fun CommsScreen(navController: NavController) {
                 onDismiss = { showCreateDialog = false },
                 onCreate = { name, desc, banner, profile ->
                     val userId = authRepository.getCurrentUserId() ?: return@CreateCommDialog
-                    showCreateDialog = false // Cerramos el diálogo primero para liberar la UI
+                    showCreateDialog = false 
 
                     scope.launch {
                         try {
                             isLoading = true
-                            // Obtenemos el nombre real del usuario antes de crear
                             val username = authRepository.getUsername(userId)
 
-                            // Subida de imágenes a Firebase Storage
                             val bannerUrl = banner?.let { uriString ->
                                 val compressed = ImageUtils.compressImage(context, Uri.parse(uriString))
                                 compressed?.let { communityRepository.uploadImage(it, "community_banners") }
@@ -248,12 +268,8 @@ fun CommsScreen(navController: NavController) {
                                 memberCount = 1
                             )
 
-                            // Operación asíncrona suspendida
                             communityRepository.createCommunity(newCommunity, username)
-
-                            // Recarga de datos
-                            communities = communityRepository.getUserCommunities(userId)
-                            isLoading = false
+                            loadCommunities()
                         } catch (e: Exception) {
                             isLoading = false
                         }
@@ -291,7 +307,8 @@ fun CommsScreen(navController: NavController) {
                             scope.launch {
                                 try {
                                     isSearching = true
-                                    val communityId = String(Base64.decode(inviteCode, Base64.NO_WRAP))
+                                    val decodedBytes = Base64.decode(inviteCode, Base64.NO_WRAP)
+                                    val communityId = String(decodedBytes, StandardCharsets.UTF_8)
                                     val community = communityRepository.getCommunity(communityId)
                                     
                                     if (community != null) {
@@ -300,7 +317,7 @@ fun CommsScreen(navController: NavController) {
                                         
                                         communityRepository.addMemberToCommunity(communityId, userId, username)
                                         showSearchDialog = false
-                                        loadCommunities() // Refresh list
+                                        loadCommunities() 
                                     } else {
                                         searchError = "Community not found. Please check the code."
                                     }
@@ -358,9 +375,8 @@ fun CommunityCard(community: Community, onClick: () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Box(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
+        Box(modifier = Modifier.fillMaxSize()) {
             Column {
-                // Banner
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -377,7 +393,6 @@ fun CommunityCard(community: Community, onClick: () -> Unit) {
                     }
                 }
                 
-                // Content area
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -408,7 +423,6 @@ fun CommunityCard(community: Community, onClick: () -> Unit) {
                 }
             }
 
-            // Overlapping Profile Image
             Box(
                 modifier = Modifier
                     .padding(start = 12.dp, top = 50.dp)
