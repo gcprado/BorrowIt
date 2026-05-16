@@ -79,9 +79,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.google.firebase.auth.FirebaseAuth
+import com.pigs.borrowit.data.model.BorrowRequest
 import com.pigs.borrowit.data.model.Item
+import com.pigs.borrowit.data.repositories.BorrowRepository
 import com.pigs.borrowit.data.repositories.CommunityRepository
 import com.pigs.borrowit.data.repositories.ItemRepository
+import com.pigs.borrowit.data.repositories.UserRepository
 import com.pigs.borrowit.screens.components.EditCommDialog
 import com.pigs.borrowit.screens.components.ItemCard
 import com.pigs.borrowit.screens.components.ItemDetailDialog
@@ -108,6 +112,8 @@ fun CommScreen(
 ) {
     val itemRepository = remember { ItemRepository() }
     val communityRepository = remember { CommunityRepository() }
+    val borrowRepository = remember { BorrowRepository() }
+    val userRepository = remember { UserRepository() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val itemsInCommunityState by itemRepository.getItemsByCommunityFlow(communityId).collectAsState(initial = emptyList())
@@ -394,7 +400,32 @@ fun CommScreen(
         ItemDetailDialog(
             item = item,
             onDismiss = { selectedItem = null },
-            onBorrow = { /* Logic for borrowing if needed */ }
+            onBorrow = {
+                scope.launch {
+                    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
+                    val user = userRepository.getUser(uid)
+                    val owner = userRepository.getUser(item.owner)
+                    
+                    val request = BorrowRequest(
+                        communityId = communityId,
+                        itemId = item.id,
+                        itemName = item.name,
+                        ownerId = item.owner,
+                        ownerName = owner?.username ?: "Owner",
+                        requesterId = uid,
+                        requesterName = user?.username ?: "User",
+                        status = "pending"
+                    )
+                    
+                    val result = borrowRepository.createBorrowRequest(request)
+                    if (result.isSuccess) {
+                        Toast.makeText(context, "Request sent!", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "Error sending request", Toast.LENGTH_SHORT).show()
+                    }
+                    selectedItem = null
+                }
+            }
         )
     }
 }

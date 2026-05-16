@@ -46,12 +46,26 @@ class ItemRepository(
         return imageRef.downloadUrl.await().toString()
     }
 
+    suspend fun getItemById(itemId: String): Item? {
+        return try {
+            val doc = itemsCollection.document(itemId).get().await()
+            if (doc.exists()) {
+                mapDocumentToItem(doc)
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Log.e("ItemRepository", "Error getting item $itemId", e)
+            null
+        }
+    }
+
     suspend fun migrateAvailabilityField() {
         val snapshot: QuerySnapshot = itemsCollection.get(Source.SERVER).await()
         snapshot.documents.forEach { doc ->
             val availabilityField = doc.get("availability")
             if (availabilityField is List<*>) {
-                val list = availabilityField.filterIsInstance<Timestamp>()  // Ahora sí es el Timestamp correcto
+                val list = availabilityField.filterIsInstance<Timestamp>()
                 if (list.size >= 2) {
                     val newAvailability = mapOf(
                         "start" to list[0],
@@ -68,7 +82,7 @@ class ItemRepository(
         onSuccess: (String) -> Unit,
         onFailure: (Exception) -> Unit
     ) {
-        val document = itemsCollection.document() // ID autogenerado
+        val document = itemsCollection.document()
         document.set(item.toMap())
             .addOnSuccessListener {
                 onSuccess(document.id)
@@ -78,7 +92,6 @@ class ItemRepository(
             }
     }
 
-    // Versión con corutinas (suspend)
     suspend fun addItemSuspend(item: Item): Result<String> {
         return try {
             val document = itemsCollection.document()
@@ -89,7 +102,6 @@ class ItemRepository(
         }
     }
 
-    // Flow para observar la lista de ítems (opcional)
     fun getItemsFlow(): Flow<List<Item>> = callbackFlow {
         val snapshotListener = itemsCollection.addSnapshotListener { snapshot, error ->
             if (error != null) {
@@ -215,7 +227,6 @@ class ItemRepository(
         }
     }
 
-    // Función auxiliar que acepta tanto Array como Map
     private fun parseAvailability(field: Any?): Availability {
         return when (field) {
             is List<*> -> {

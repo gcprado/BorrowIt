@@ -15,4 +15,21 @@ data class BorrowRequest(
     val requestDate: Timestamp = Timestamp.now(),
     val startDate: Timestamp = Timestamp.now(),
     val endDate: Timestamp = Timestamp.now()
-)
+) {
+    fun toMap(): Map<String, Any?> {
+        return mapOf(
+            "id" to id,
+            "communityId" to communityId,
+            "itemId" to itemId,
+            "itemName" to itemName,
+            "ownerId" to ownerId,
+            "ownerName" to ownerName,
+            "requesterId" to requesterId,
+            "requesterName" to requesterName,
+            "status" to status,
+            "requestDate" to requestDate,
+            "startDate" to startDate,
+            "endDate" to endDate
+        )
+    }
+}

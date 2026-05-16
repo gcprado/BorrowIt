@@ -1,5 +1,6 @@
 package com.pigs.borrowit.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -29,7 +30,6 @@ import coil.compose.rememberAsyncImagePainter
 import com.pigs.borrowit.R
 import com.pigs.borrowit.control.HomeViewModel
 import com.pigs.borrowit.data.model.BorrowRequest
-import com.pigs.borrowit.data.model.Availability
 import com.pigs.borrowit.data.model.Item
 import com.pigs.borrowit.screens.components.ItemDetailDialog
 import com.pigs.borrowit.screens.components.MainBottomNav
@@ -56,44 +56,9 @@ fun HomeScreen(
 ) {
     val userState by viewModel.userState.collectAsState()
     val showNotifications by viewModel.showNotifications.collectAsState()
-    val pendingRequests = viewModel.pendingRequests
-
-    // Recommended item from a community
-    val recommendedItem = remember {
-        Item(
-            id = "vg1",
-            name = "Nintendo Switch",
-            description = "Console with 2 Joy-Cons. Perfect for parties or a weekend of gaming.",
-            picture = "file:///android_asset/communities/videogames/Switch.jpg",
-            owner = "Will Byers",
-            condition = "Excellent condition",
-            availability = Availability(
-                start = java.util.Date(),
-                end = java.util.Date()
-            )
-        )
-    }
-
-    val sponsoredAds = listOf(
-        SponsoredAd(
-            id = 1,
-            title = "Professional Hair Dryer",
-            brand = "Dyson",
-            description = "Fast drying • Ionic technology",
-            imageRes = R.drawable.hairdryer,
-            ctaText = "Shop Now",
-            ctaColor = Color(0xFFFF6B6B)
-        ),
-        SponsoredAd(
-            id = 2,
-            title = "Electric Drill Pro",
-            brand = "Bosch",
-            description = "Cordless • 20V Max • 2 batteries included",
-            imageRes = R.drawable.electricdrill,
-            ctaText = "View Deal",
-            ctaColor = Color(0xFF4CAF50)
-        )
-    )
+    val pendingRequests by viewModel.pendingRequests.collectAsState()
+    val recommendedItem by viewModel.recommendedItem.collectAsState()
+    val sponsoredAds by viewModel.sponsoredAds.collectAsState()
 
     var selectedItem by remember { mutableStateOf<Item?>(null) }
 
@@ -108,42 +73,47 @@ fun HomeScreen(
                 ProfileHeader(
                     username = userState?.username ?: "User",
                     profilePicUrl = userState?.profilePicture ?: "",
+                    notificationCount = pendingRequests.size,
                     onNotificationClick = { viewModel.setShowNotifications(true) }
                 )
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
             // Recommendations Section
-            item {
-                SectionHeader(
-                    title = "Recommended for you",
-                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 8.dp)
-                )
-            }
+            recommendedItem?.let { item ->
+                item {
+                    SectionHeader(
+                        title = "Recommended for you",
+                        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 8.dp)
+                    )
+                }
 
-            item {
-                HomeRecommendedCard(
-                    item = recommendedItem,
-                    onClick = { selectedItem = recommendedItem }
-                )
-                Spacer(modifier = Modifier.height(24.dp))
+                item {
+                    HomeRecommendedCard(
+                        item = item,
+                        onClick = { selectedItem = item }
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
             }
 
             // Sponsored Section
-            item {
-                SectionHeader(
-                    title = "Sponsored deals",
-                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 12.dp),
-                    fontSize = 14,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.Gray
-                )
-            }
+            if (sponsoredAds.isNotEmpty()) {
+                item {
+                    SectionHeader(
+                        title = "Sponsored deals",
+                        modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 12.dp),
+                        fontSize = 14,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.Gray
+                    )
+                }
 
-            // Ads List
-            items(sponsoredAds) { ad ->
-                HomeSponsoredAdCard(ad = ad)
-                Spacer(modifier = Modifier.height(16.dp))
+                // Ads List
+                items(sponsoredAds) { ad ->
+                    HomeSponsoredAdCard(ad = ad)
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
             }
 
             item {
@@ -157,7 +127,7 @@ fun HomeScreen(
             ItemDetailDialog(
                 item = item,
                 onDismiss = { selectedItem = null },
-                onBorrow = { /* Handle borrow logic */ }
+                onBorrow = { viewModel.borrowItem(item) }
             )
         }
 
@@ -180,6 +150,7 @@ fun HomeScreen(
 fun ProfileHeader(
     username: String,
     profilePicUrl: String,
+    notificationCount: Int,
     onNotificationClick: () -> Unit
 ) {
     Row(
@@ -232,13 +203,35 @@ fun ProfileHeader(
             }
         }
 
-        IconButton(onClick = onNotificationClick) {
-            Icon(
-                painter = painterResource(id = R.drawable.notification_symbol),
-                contentDescription = "Notifications",
-                modifier = Modifier.size(32.dp),
-                tint = Color.Unspecified
-            )
+        Box(modifier = Modifier.wrapContentSize()) {
+            IconButton(onClick = onNotificationClick) {
+                Icon(
+                    painter = painterResource(id = R.drawable.notificacion),
+                    contentDescription = "Notifications",
+                    modifier = Modifier.size(32.dp),
+                    tint = Color.Unspecified
+                )
+            }
+            if (notificationCount > 0) {
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .offset(x = 8.dp, y = (-8).dp)
+                        .size(18.dp),
+                    shape = CircleShape,
+                    color = Color.Red,
+                    border = BorderStroke(1.5.dp, Color.White)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = if (notificationCount > 9) "9+" else notificationCount.toString(),
+                            color = Color.White,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -288,7 +281,7 @@ fun HomeRecommendedCard(
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = "NEW",
+                        text = "FOR YOU",
                         color = Color.White,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
@@ -319,7 +312,7 @@ fun HomeRecommendedCard(
                 Spacer(modifier = Modifier.height(4.dp))
                 
                 Text(
-                    text = "Lent by ${item.owner} • Video Games",
+                    text = "Lent by ${item.owner}",
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
