@@ -1,21 +1,21 @@
 package com.pigs.borrowit.control
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.pigs.borrowit.R
 import com.pigs.borrowit.data.model.BorrowRequest
-import com.pigs.borrowit.data.model.User
 import com.pigs.borrowit.data.model.Item
-import com.pigs.borrowit.data.repositories.UserRepository
+import com.pigs.borrowit.data.model.User
 import com.pigs.borrowit.data.repositories.BorrowRepository
 import com.pigs.borrowit.data.repositories.ItemRepository
+import com.pigs.borrowit.data.repositories.UserRepository
 import com.pigs.borrowit.screens.SponsoredAd
-import com.pigs.borrowit.R
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import android.util.Log
 
 class HomeViewModel(
     private val userRepository: UserRepository = UserRepository(),
@@ -80,10 +80,15 @@ class HomeViewModel(
         val adPool = listOf(
             SponsoredAd(1, "Professional Hair Dryer", "Dyson", "Fast drying • Ionic technology", R.drawable.hairdryer),
             SponsoredAd(2, "Electric Drill Pro", "Bosch", "Cordless • 20V Max", R.drawable.electricdrill),
-            SponsoredAd(3, "Mountain Bike", "Trek", "All-terrain • 21 speeds", R.drawable.borrowitlogo),
-            SponsoredAd(4, "Coffee Maker", "Nespresso", "One-touch brewing", R.drawable.hairdryer)
+            SponsoredAd(3, "Mountain Bike", "Trek", "All-terrain • 21 speeds", R.drawable.mountainbike),
+            SponsoredAd(4, "Coffee Maker", "Nespresso", "One-touch brewing", R.drawable.coffeemaker),
+            SponsoredAd(5, "Camping Tent", "Quechua", "Waterproof • 3 persons", R.drawable.campingtent),
+            SponsoredAd(6, "Pressure Washer", "Kärcher", "High pressure • Compact", R.drawable.pressurewasher),
+            SponsoredAd(7, "Lawn Mower", "Honda", "Gas powered • Self-propelled", R.drawable.lawnmower),
+            SponsoredAd(8, "Standing Mixer", "KitchenAid", "Professional grade • 5qt", R.drawable.standingmixer)
         )
-        _sponsoredAds.value = adPool.shuffled().take(2)
+        // Shuffle and take 3 random ads from the pool
+        _sponsoredAds.value = adPool.shuffled().take(3)
     }
 
     fun setShowNotifications(show: Boolean) {
@@ -108,7 +113,6 @@ class HomeViewModel(
         
         viewModelScope.launch {
             try {
-                // We might want to fetch owner name too, but for now we use ID or "Owner"
                 val ownerUser = userRepository.getUser(item.owner)
                 
                 val request = BorrowRequest(
