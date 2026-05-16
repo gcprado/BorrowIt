@@ -47,13 +47,21 @@ class AuthRepository(
         return try {
             val result = auth.signInWithCredential(credential).await()
             val user = result.user
-            if (user != null && result.additionalUserInfo?.isNewUser == true) {
-                // Sincronizamos con el modelo User para mantener consistencia
-                val newUser = User(
-                    username = user.displayName ?: "User",
-                    profilePicture = user.photoUrl?.toString() ?: ""
-                )
-                usersCollection.document(user.uid).set(newUser).await()
+            if (user != null) {
+                val userRef = usersCollection.document(user.uid)
+                val userDoc = userRef.get().await()
+                
+                // Obtenemos la URL de la foto de Google
+                val googlePhoto = user.photoUrl?.toString() ?: ""
+                
+                // Si el usuario es nuevo, o si no tiene foto pero Google sí la tiene, actualizamos
+                if (!userDoc.exists() || (userDoc.getString("profilePicture").isNullOrEmpty() && googlePhoto.isNotEmpty())) {
+                    val newUser = User(
+                        username = user.displayName ?: "User",
+                        profilePicture = googlePhoto
+                    )
+                    userRef.set(newUser).await()
+                }
             }
             Result.success(Unit)
         } catch (e: Exception) {
@@ -71,10 +79,7 @@ class AuthRepository(
     }
 
     fun logout(context: Context) {
-        // 1. Cerrar sesión en Firebase
         auth.signOut()
-        
-        // 2. Cerrar sesión en Google para que permita elegir cuenta la próxima vez
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).build()
         val googleSignInClient = GoogleSignIn.getClient(context, gso)
         googleSignInClient.signOut()

@@ -38,6 +38,13 @@ sealed class Screen(
         iconFilled = Icons.Filled.AddCircleOutline
     )
 
+    data object ManageItems : Screen(
+        route = "manage_items",
+        title = "Manage Items",
+        icon = Icons.Outlined.Person,
+        iconFilled = Icons.Filled.Person
+    )
+
     data object Profile : Screen(
         route = "profile",
         title = "Profile",

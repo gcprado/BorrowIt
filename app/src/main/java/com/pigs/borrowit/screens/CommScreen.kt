@@ -1,8 +1,16 @@
 package com.pigs.borrowit.screens
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.net.Uri
+import android.util.Base64
+import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,12 +29,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -38,44 +48,45 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.pigs.borrowit.data.model.Item
-import com.pigs.borrowit.data.repositories.ItemRepository
-import androidx.compose.runtime.collectAsState
-import com.pigs.borrowit.screens.components.EditCommDialog
-import com.pigs.borrowit.screens.components.ItemDetailDialog
-import com.pigs.borrowit.screens.components.ItemCard
-import com.pigs.borrowit.ui.theme.Primary
-import androidx.compose.runtime.rememberCoroutineScope
-import android.net.Uri
-import com.google.firebase.Timestamp
-import com.pigs.borrowit.data.model.Community
 import com.pigs.borrowit.data.repositories.CommunityRepository
+import com.pigs.borrowit.data.repositories.ItemRepository
+import com.pigs.borrowit.screens.components.EditCommDialog
+import com.pigs.borrowit.screens.components.ItemCard
+import com.pigs.borrowit.screens.components.ItemDetailDialog
+import com.pigs.borrowit.ui.theme.Primary
 import com.pigs.borrowit.utils.ImageUtils
-import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 
 data class CommunityMember(
@@ -115,6 +126,7 @@ fun CommScreen(
     var showEditDialog by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableIntStateOf(0) }
     var selectedItem by remember { mutableStateOf<Item?>(null) }
+    var showInviteDialog by remember { mutableStateOf(false) }
 
     val membersList = remember {
         mutableStateListOf(
@@ -233,7 +245,7 @@ fun CommScreen(
             } else {
                 item {
                     Button(
-                        onClick = { /* Invitation logic */ },
+                        onClick = { showInviteDialog = true },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -260,6 +272,60 @@ fun CommScreen(
                 }
             }
         }
+    }
+
+    if (showInviteDialog) {
+        val inviteCode = remember(communityId) {
+            Base64.encodeToString(communityId.toByteArray(), Base64.NO_WRAP)
+        }
+        
+        AlertDialog(
+            onDismissRequest = { showInviteDialog = false },
+            title = { Text("Invite Members", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text("Share this code with the person you want to invite:")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color.LightGray.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, Color.LightGray)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = inviteCode,
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Primary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            IconButton(
+                                onClick = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    val clip = ClipData.newPlainText("Invite Code", inviteCode)
+                                    clipboard.setPrimaryClip(clip)
+                                    Toast.makeText(context, "Code copied to clipboard", Toast.LENGTH_SHORT).show()
+                                }
+                            ) {
+                                Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = Primary)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showInviteDialog = false }) {
+                    Text("Close", color = Primary)
+                }
+            }
+        )
     }
 
     if (showEditDialog) {

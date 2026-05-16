@@ -12,6 +12,7 @@ import com.pigs.borrowit.screens.CommScreen
 import com.pigs.borrowit.screens.CommsScreen
 import com.pigs.borrowit.screens.HomeScreen
 import com.pigs.borrowit.screens.ItemsScreen
+import com.pigs.borrowit.screens.ManageItemsScreen
 import com.pigs.borrowit.screens.ProfileScreen
 import com.pigs.borrowit.screens.LoginScreen
 import com.pigs.borrowit.screens.SignUpScreen
@@ -65,6 +66,9 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         }
         composable(Screen.Items.route) {
             ItemsScreen(navController)
+        }
+        composable(Screen.ManageItems.route) {
+            ManageItemsScreen(navController)
         }
         composable(Screen.Profile.route) {
             ProfileScreen(navController)

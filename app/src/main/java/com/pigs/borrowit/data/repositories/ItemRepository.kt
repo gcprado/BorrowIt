@@ -21,6 +21,24 @@ class ItemRepository(
 ) {
     private val itemsCollection = firestore.collection("items")
 
+    suspend fun updateItemSuspend(itemId: String, updates: Map<String, Any?>): Result<Unit> {
+        return try {
+            itemsCollection.document(itemId).update(updates).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteItemSuspend(itemId: String): Result<Unit> {
+        return try {
+            itemsCollection.document(itemId).delete().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun uploadImage(imageData: ByteArray): String {
         val fileName = "${UUID.randomUUID()}.jpg"
         val imageRef = storage.reference.child("item_images/$fileName")
@@ -89,8 +107,9 @@ class ItemRepository(
     }
 
     fun getItemsByOwnerFlow(ownerId: String): Flow<List<Item>> = callbackFlow {
+        val userRef = firestore.collection("users").document(ownerId)
         val snapshotListener = itemsCollection
-            .whereEqualTo("owner", ownerId)
+            .whereIn("owner", listOf(ownerId, userRef, "users/$ownerId", "$ownerId ", " $ownerId"))
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     close(error)
@@ -100,6 +119,25 @@ class ItemRepository(
                 val items = snapshot?.documents?.mapNotNull { doc ->
                     mapDocumentToItem(doc)
                 } ?: emptyList()
+
+                trySend(items)
+            }
+        awaitClose { snapshotListener.remove() }
+    }
+
+    fun getItemsByCurrentUserFlow(currentUserId: String): Flow<List<Item>> = callbackFlow {
+        val userRef = firestore.collection("users").document(currentUserId)
+        val snapshotListener = itemsCollection
+            .whereIn("currentUser", listOf(currentUserId, userRef, "users/$currentUserId", "$currentUserId ", " $currentUserId"))
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                val items = snapshot?.documents?.mapNotNull { doc ->
+                    mapDocumentToItem(doc)
+                }?.filter { it.owner != currentUserId } ?: emptyList()
 
                 trySend(items)
             }
@@ -128,11 +166,35 @@ class ItemRepository(
         return try {
             val name = doc.getString("name") ?: ""
             val description = doc.getString("description") ?: ""
-            val owner = doc.getString("owner") ?: ""
+            
+            val ownerRaw = doc.get("owner")
+            val owner = when (ownerRaw) {
+                is com.google.firebase.firestore.DocumentReference -> ownerRaw.id
+                is String -> {
+                    var str = ownerRaw.trim()
+                    if (str.startsWith("users/")) str = str.substringAfter("users/")
+                    str
+                }
+                else -> ""
+            }
+            
             val condition = doc.getString("condition") ?: ""
             val picture = doc.getString("picture") ?: ""
+            val pictures = doc.get("pictures") as? List<String> ?: emptyList()
             val availability = parseAvailability(doc.get("availability"))
             val communityId = doc.getString("communityId") ?: ""
+            val status = doc.getString("status") ?: "AVAILABLE"
+            
+            val currentUserRaw = doc.get("currentUser")
+            val currentUser = when (currentUserRaw) {
+                is com.google.firebase.firestore.DocumentReference -> currentUserRaw.id
+                is String -> {
+                    var str = currentUserRaw.trim()
+                    if (str.startsWith("users/")) str = str.substringAfter("users/")
+                    str
+                }
+                else -> ""
+            }
 
             Item(
                 id = doc.id,
@@ -141,8 +203,11 @@ class ItemRepository(
                 owner = owner,
                 condition = condition,
                 picture = picture,
+                pictures = pictures,
                 availability = availability,
-                communityId = communityId
+                communityId = communityId,
+                status = status,
+                currentUser = currentUser
             )
         } catch (e: Exception) {
             Log.e("ItemRepository", "Error parseando documento ${doc.id}", e)

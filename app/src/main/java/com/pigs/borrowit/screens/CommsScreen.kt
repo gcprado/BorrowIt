@@ -1,5 +1,7 @@
 package com.pigs.borrowit.screens
 
+import android.net.Uri
+import android.util.Base64
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,14 +16,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import com.pigs.borrowit.ui.theme.Primary
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -32,16 +35,13 @@ import com.google.firebase.Timestamp
 import com.pigs.borrowit.data.model.Community
 import com.pigs.borrowit.data.repositories.AuthRepository
 import com.pigs.borrowit.data.repositories.CommunityRepository
-import com.pigs.borrowit.presentation.navigation.Screen
 import com.pigs.borrowit.screens.components.CreateCommDialog
 import com.pigs.borrowit.screens.components.MainBottomNav
+import com.pigs.borrowit.ui.theme.Primary
+import com.pigs.borrowit.utils.ImageUtils
 import kotlinx.coroutines.launch
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-
-import android.net.Uri
-import com.pigs.borrowit.utils.ImageUtils
-import androidx.compose.ui.platform.LocalContext
 
 enum class SortType {
     ALPHABETICAL, CREATION, MODIFICATION
@@ -57,6 +57,7 @@ fun CommsScreen(navController: NavController) {
     var isLoading by remember { mutableStateOf(true) }
     var selectedSort by remember { mutableStateOf(SortType.MODIFICATION) }
     var showCreateDialog by remember { mutableStateOf(false) }
+    var showSearchDialog by remember { mutableStateOf(false) }
     val gridState = rememberLazyGridState()
 
     val context = LocalContext.current
@@ -92,7 +93,7 @@ fun CommsScreen(navController: NavController) {
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -180,17 +181,30 @@ fun CommsScreen(navController: NavController) {
             }
         }
 
-        // FAB to create community
-        FloatingActionButton(
-            onClick = { showCreateDialog = true },
+        // Action Buttons (Search and Create)
+        Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(bottom = 100.dp, end = 24.dp),
-            containerColor = Primary,
-            contentColor = Color.White,
-            shape = CircleShape
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Icon(Icons.Default.Add, contentDescription = "Create Community")
+            FloatingActionButton(
+                onClick = { showSearchDialog = true },
+                containerColor = Color.White,
+                contentColor = Primary,
+                shape = CircleShape
+            ) {
+                Icon(Icons.Default.Search, contentDescription = "Search Community")
+            }
+
+            FloatingActionButton(
+                onClick = { showCreateDialog = true },
+                containerColor = Primary,
+                contentColor = Color.White,
+                shape = CircleShape
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Create Community")
+            }
         }
 
         // Navbar
@@ -247,6 +261,70 @@ fun CommsScreen(navController: NavController) {
                 }
             )
         }
+
+        if (showSearchDialog) {
+            var inviteCode by remember { mutableStateOf("") }
+            var searchError by remember { mutableStateOf<String?>(null) }
+            var isSearching by remember { mutableStateOf(false) }
+
+            AlertDialog(
+                onDismissRequest = { showSearchDialog = false },
+                title = { Text("Join Community", fontWeight = FontWeight.Bold) },
+                text = {
+                    Column {
+                        Text("Enter the invitation code to find and join a community.")
+                        Spacer(modifier = Modifier.height(16.dp))
+                        OutlinedTextField(
+                            value = inviteCode,
+                            onValueChange = { inviteCode = it; searchError = null },
+                            label = { Text("Invitation Code") },
+                            modifier = Modifier.fillMaxWidth(),
+                            isError = searchError != null,
+                            supportingText = { searchError?.let { Text(it) } },
+                            singleLine = true
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                try {
+                                    isSearching = true
+                                    val communityId = String(Base64.decode(inviteCode, Base64.NO_WRAP))
+                                    val community = communityRepository.getCommunity(communityId)
+                                    
+                                    if (community != null) {
+                                        val userId = authRepository.getCurrentUserId()
+                                        val username = authRepository.getUsername(userId!!)
+                                        
+                                        communityRepository.addMemberToCommunity(communityId, userId, username)
+                                        showSearchDialog = false
+                                        loadCommunities() // Refresh list
+                                    } else {
+                                        searchError = "Community not found. Please check the code."
+                                    }
+                                } catch (e: Exception) {
+                                    searchError = "Invalid code format."
+                                } finally {
+                                    isSearching = false
+                                }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Primary),
+                        enabled = inviteCode.isNotBlank() && !isSearching
+                    ) {
+                        if (isSearching) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                        else Text("Join")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showSearchDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -280,7 +358,7 @@ fun CommunityCard(community: Community, onClick: () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
             Column {
                 // Banner
                 Box(
