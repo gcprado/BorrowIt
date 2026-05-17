@@ -75,6 +75,45 @@ class CommunityRepository {
         }
     }
 
+    suspend fun updateMemberRole(communityId: String, userId: String, newRole: String): Result<Unit> {
+        return try {
+            communitiesRef.document(communityId).collection("members").document(userId)
+                .update("role", newRole).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun removeMemberFromCommunity(communityId: String, userId: String): Result<Unit> {
+        return try {
+            db.runTransaction { transaction ->
+                val commRef = communitiesRef.document(communityId)
+                val memberRef = commRef.collection("members").document(userId)
+                
+                val snapshot = transaction.get(commRef)
+                val currentCount = snapshot.getLong("memberCount") ?: 0
+                
+                transaction.update(commRef, "memberCount", if (currentCount > 0) currentCount - 1 else 0)
+                transaction.delete(memberRef)
+            }.await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteCommunity(communityId: String): Result<Unit> {
+        return try {
+            // Se elimina el documento raíz. En una implementación más robusta se deberían 
+            // borrar también las subcolecciones, pero borrar el raíz lo quita de las listas principales.
+            communitiesRef.document(communityId).delete().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun addCommunityItem(communityId: String, item: CommunityItem): Result<String> {
         return try {
             val docRef = communitiesRef.document(communityId).collection("communityItems").document()
@@ -98,7 +137,7 @@ class CommunityRepository {
     suspend fun getUserCommunities(userId: String): List<Community> {
         val result = mutableSetOf<Community>()
         try {
-            // 1. First fetch communities where user is the creator (always works)
+            // 1. Fetch communities where user is creator
             val createdSnapshot = communitiesRef.whereEqualTo("creatorId", userId).get().await()
             result.addAll(createdSnapshot.toObjects(Community::class.java))
         } catch (e: Exception) {
@@ -106,7 +145,7 @@ class CommunityRepository {
         }
 
         try {
-            // 2. Then fetch communities where user is a member (requires collectionGroup index)
+            // 2. Fetch communities where user is a member
             val memberships = db.collectionGroup("members")
                 .whereEqualTo("userId", userId)
                 .get()
@@ -123,8 +162,7 @@ class CommunityRepository {
                 }
             }
         } catch (e: Exception) {
-            // This might fail if the Collection Group index hasn't been created yet in the Firebase Console
-            Log.e("CommunityRepository", "Error fetching membership communities (check if index is created)", e)
+            Log.e("CommunityRepository", "Error fetching membership communities", e)
         }
         
         return result.toList().sortedByDescending { it.updatedAt }

@@ -36,11 +36,13 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -58,6 +60,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -79,26 +82,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.google.firebase.auth.FirebaseAuth
-import com.pigs.borrowit.data.model.BorrowRequest
 import com.pigs.borrowit.data.model.Item
-import com.pigs.borrowit.data.repositories.BorrowRepository
+import com.pigs.borrowit.data.model.CommunityMember
+import com.pigs.borrowit.data.repositories.AuthRepository
 import com.pigs.borrowit.data.repositories.CommunityRepository
 import com.pigs.borrowit.data.repositories.ItemRepository
-import com.pigs.borrowit.data.repositories.UserRepository
 import com.pigs.borrowit.screens.components.EditCommDialog
 import com.pigs.borrowit.screens.components.ItemCard
 import com.pigs.borrowit.screens.components.ItemDetailDialog
 import com.pigs.borrowit.ui.theme.Primary
 import com.pigs.borrowit.utils.ImageUtils
 import kotlinx.coroutines.launch
-
-data class CommunityMember(
-    val id: String,
-    val name: String,
-    val role: String, // "Admin" or "Member"
-    val profileUrl: String? = null
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -112,36 +106,59 @@ fun CommScreen(
 ) {
     val itemRepository = remember { ItemRepository() }
     val communityRepository = remember { CommunityRepository() }
-    val borrowRepository = remember { BorrowRepository() }
-    val userRepository = remember { UserRepository() }
+    val authRepository = remember { AuthRepository() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val itemsInCommunityState by itemRepository.getItemsByCommunityFlow(communityId).collectAsState(initial = emptyList())
 
-    // Navigation parameters are automatically decoded by the navigation component.
-    val decodedName = name
-    val decodedDescription = description
-    val decodedBannerUrl = if (bannerUrl == "null") null else bannerUrl
-    val decodedProfileUrl = if (profileUrl == "null") null else profileUrl
+    val currentUserId = remember { authRepository.getCurrentUserId() ?: "" }
 
-    var currentName by remember { mutableStateOf(decodedName) }
-    var currentDescription by remember { mutableStateOf(decodedDescription) }
-    var currentBannerUrl by remember { mutableStateOf(decodedBannerUrl) }
-    var currentProfileUrl by remember { mutableStateOf(decodedProfileUrl) }
+    // Use Uri.decode to handle potential '+' or '%20' from navigation parameters
+    val initialName = remember(name) { 
+        try { java.net.URLDecoder.decode(name, "UTF-8") } catch (e: Exception) { name.replace("+", " ") }
+    }
+    val initialDescription = remember(description) { 
+        try { java.net.URLDecoder.decode(description, "UTF-8") } catch (e: Exception) { description.replace("+", " ") }
+    }
+
+    var currentName by remember { mutableStateOf(initialName) }
+    var currentDescription by remember { mutableStateOf(initialDescription) }
+    var currentBannerUrl by remember { mutableStateOf(if (bannerUrl == "null") null else bannerUrl) }
+    var currentProfileUrl by remember { mutableStateOf(if (profileUrl == "null") null else profileUrl) }
 
     var showEditDialog by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableIntStateOf(0) }
     var selectedItem by remember { mutableStateOf<Item?>(null) }
     var showInviteDialog by remember { mutableStateOf(false) }
 
-    val membersList = remember {
-        mutableStateListOf(
-            CommunityMember("u1", "John Doe (You)", "Admin"),
-            CommunityMember("u2", "Mike Wheeler", "Member"),
-            CommunityMember("u3", "Dustin Henderson", "Member"),
-            CommunityMember("u4", "Lucas Sinclair", "Member"),
-            CommunityMember("u5", "Nancy Wheeler", "Member")
-        )
+    var membersList by remember { mutableStateOf<List<CommunityMember>>(emptyList()) }
+    var isLoadingMembers by remember { mutableStateOf(false) }
+    var creatorId by remember { mutableStateOf("") }
+
+    val loadData = {
+        scope.launch {
+            isLoadingMembers = true
+            // Load fresh data from repository to avoid URL encoding issues
+            val comm = communityRepository.getCommunity(communityId)
+            comm?.let {
+                currentName = it.name
+                currentDescription = it.description
+                currentBannerUrl = it.bannerUrl
+                currentProfileUrl = it.profileUrl
+                creatorId = it.creatorId
+            }
+            
+            membersList = communityRepository.getCommunityMembers(communityId)
+            isLoadingMembers = false
+        }
+    }
+
+    LaunchedEffect(communityId) {
+        loadData()
+    }
+
+    val userIsAdmin = remember(membersList, currentUserId) {
+        membersList.find { it.userId == currentUserId }?.role == "admin"
     }
 
     Scaffold(
@@ -154,8 +171,10 @@ fun CommScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showEditDialog = true }) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Primary)
+                    if (userIsAdmin) {
+                        IconButton(onClick = { showEditDialog = true }) {
+                            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Primary)
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
@@ -244,6 +263,13 @@ fun CommScreen(
             }
 
             if (selectedTab == 0) {
+                if (itemsInCommunityState.isEmpty()) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                            Text("No items found in this community", color = Color.Gray)
+                        }
+                    }
+                }
                 items(itemsInCommunityState) { item ->
                     ItemCard(item = item, onClick = { selectedItem = item })
                     Spacer(modifier = Modifier.height(12.dp))
@@ -263,18 +289,35 @@ fun CommScreen(
                         Text("Invite Members", fontWeight = FontWeight.Bold)
                     }
                 }
-                items(membersList) { member ->
-                    MemberCard(
-                        member = member,
-                        onDelete = { membersList.remove(member) },
-                        onPromote = { 
-                            val index = membersList.indexOf(member)
-                            if (index != -1) {
-                                membersList[index] = member.copy(role = "Admin")
-                            }
+                
+                if (isLoadingMembers) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = Primary)
                         }
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    }
+                } else {
+                    items(membersList) { member ->
+                        MemberCard(
+                            member = member,
+                            isCurrentUser = member.userId == currentUserId,
+                            isOwner = member.userId == creatorId,
+                            canManage = userIsAdmin && member.userId != currentUserId && member.userId != creatorId,
+                            onRemove = { 
+                                scope.launch {
+                                    communityRepository.removeMemberFromCommunity(communityId, member.userId)
+                                    loadData()
+                                }
+                            },
+                            onRoleChange = { newRole ->
+                                scope.launch {
+                                    communityRepository.updateMemberRole(communityId, member.userId, newRole)
+                                    loadData()
+                                }
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
                 }
             }
         }
@@ -386,12 +429,26 @@ fun CommScreen(
                 showEditDialog = false
             },
             onDelete = {
-                showEditDialog = false
-                navController.popBackStack()
+                scope.launch {
+                    try {
+                        communityRepository.deleteCommunity(communityId)
+                        showEditDialog = false
+                        navController.popBackStack()
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Error deleting community", Toast.LENGTH_SHORT).show()
+                    }
+                }
             },
             onLeave = {
-                showEditDialog = false
-                navController.popBackStack()
+                scope.launch {
+                    try {
+                        communityRepository.removeMemberFromCommunity(communityId, currentUserId)
+                        showEditDialog = false
+                        navController.popBackStack()
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Error leaving community", Toast.LENGTH_SHORT).show()
+                    }
+                }
             }
         )
     }
@@ -400,32 +457,7 @@ fun CommScreen(
         ItemDetailDialog(
             item = item,
             onDismiss = { selectedItem = null },
-            onBorrow = {
-                scope.launch {
-                    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
-                    val user = userRepository.getUser(uid)
-                    val owner = userRepository.getUser(item.owner)
-                    
-                    val request = BorrowRequest(
-                        communityId = communityId,
-                        itemId = item.id,
-                        itemName = item.name,
-                        ownerId = item.owner,
-                        ownerName = owner?.username ?: "Owner",
-                        requesterId = uid,
-                        requesterName = user?.username ?: "User",
-                        status = "pending"
-                    )
-                    
-                    val result = borrowRepository.createBorrowRequest(request)
-                    if (result.isSuccess) {
-                        Toast.makeText(context, "Request sent!", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(context, "Error sending request", Toast.LENGTH_SHORT).show()
-                    }
-                    selectedItem = null
-                }
-            }
+            onBorrow = { /* Logic for borrowing if needed */ }
         )
     }
 }
@@ -433,10 +465,14 @@ fun CommScreen(
 @Composable
 fun MemberCard(
     member: CommunityMember,
-    onDelete: () -> Unit,
-    onPromote: () -> Unit
+    isCurrentUser: Boolean,
+    isOwner: Boolean,
+    canManage: Boolean,
+    onRemove: () -> Unit,
+    onRoleChange: (String) -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val isAdmin = member.role == "admin"
 
     Card(
         modifier = Modifier
@@ -454,31 +490,39 @@ fun MemberCard(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(if (member.role == "Admin") Primary.copy(alpha = 0.1f) else Color.LightGray.copy(alpha = 0.3f)),
+                    .background(if (isAdmin) Primary.copy(alpha = 0.1f) else Color.LightGray.copy(alpha = 0.3f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = if (member.role == "Admin") Icons.Default.Shield else Icons.Default.Person,
+                    imageVector = if (isAdmin) Icons.Default.Shield else Icons.Default.Person,
                     contentDescription = null,
-                    tint = if (member.role == "Admin") Primary else Color.Gray,
+                    tint = if (isAdmin) Primary else Color.Gray,
                     modifier = Modifier.size(20.dp)
                 )
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = member.userName + if (isCurrentUser) " (You)" else "",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (isOwner) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(Icons.Default.Star, contentDescription = "Owner", tint = Color(0xFFFFB300), modifier = Modifier.size(16.dp))
+                        Text("Owner", style = MaterialTheme.typography.labelSmall, color = Color(0xFFFFB300), fontWeight = FontWeight.Bold)
+                    }
+                }
                 Text(
-                    text = member.name,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                )
-                Text(
-                    text = member.role,
+                    text = member.role.replaceFirstChar { it.uppercase() },
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (member.role == "Admin") Primary else Color.Gray
+                    color = if (isAdmin) Primary else Color.Gray
                 )
             }
             
-            // Don't show menu for the current user
-            if (!member.name.contains("(You)")) {
+            if (canManage) {
                 Box {
                     IconButton(onClick = { showMenu = true }) {
                         Icon(Icons.Default.MoreVert, contentDescription = "Options")
@@ -487,11 +531,20 @@ fun MemberCard(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false }
                     ) {
-                        if (member.role != "Admin") {
+                        if (isAdmin) {
+                            DropdownMenuItem(
+                                text = { Text("Remove Admin Privileges") },
+                                onClick = {
+                                    onRoleChange("member")
+                                    showMenu = false
+                                },
+                                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                            )
+                        } else {
                             DropdownMenuItem(
                                 text = { Text("Promote to Admin") },
                                 onClick = {
-                                    onPromote()
+                                    onRoleChange("admin")
                                     showMenu = false
                                 },
                                 leadingIcon = { Icon(Icons.Default.Shield, contentDescription = null, modifier = Modifier.size(18.dp)) }
@@ -500,7 +553,7 @@ fun MemberCard(
                         DropdownMenuItem(
                             text = { Text("Remove from Community", color = MaterialTheme.colorScheme.error) },
                             onClick = {
-                                onDelete()
+                                onRemove()
                                 showMenu = false
                             },
                             leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error) }
