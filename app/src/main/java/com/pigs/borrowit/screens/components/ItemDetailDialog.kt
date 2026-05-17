@@ -1,5 +1,6 @@
 package com.pigs.borrowit.screens.components
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -11,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -22,22 +24,29 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
+import com.google.firebase.Timestamp
 import com.pigs.borrowit.data.model.Item
 import com.pigs.borrowit.data.repositories.UserRepository
 import com.pigs.borrowit.ui.theme.Primary
 import com.google.firebase.auth.FirebaseAuth
+import com.pigs.borrowit.data.model.BorrowRequest
+import com.pigs.borrowit.data.repositories.AuthRepository
+import com.pigs.borrowit.data.repositories.BorrowRepository
 import com.pigs.borrowit.data.repositories.ItemRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -57,14 +66,46 @@ fun ItemDetailDialog(
     val endStr = dateFormat.format(item.availability.end)
 
     val userRepository = remember { UserRepository() }
+    val authRepository = remember { AuthRepository() }
+    val borrowRepository = remember { BorrowRepository() }
     val ownerState by userRepository.getUserFlow(item.owner).collectAsState(initial = null)
 
     val currentUser = FirebaseAuth.getInstance().currentUser
     val isOwner = currentUser?.uid == item.owner
+    
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var isDeleting by remember { mutableStateOf(false) }
+    var isBorrowing by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
+    var showSuccessDialog by remember { mutableStateOf(false) }
+    var successMessage by remember { mutableStateOf("") }
+
+    if (showSuccessDialog) {
+        AlertDialog(
+            onDismissRequest = { 
+                showSuccessDialog = false
+                onDismiss()
+            },
+            icon = { Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF4CAF50), modifier = Modifier.size(48.dp)) },
+            title = { Text("Request Sent", fontWeight = FontWeight.Bold) },
+            text = { Text(successMessage, textAlign = TextAlign.Center) },
+            confirmButton = {
+                Button(
+                    onClick = { 
+                        showSuccessDialog = false
+                        onDismiss()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Primary)
+                ) {
+                    Text("Great!")
+                }
+            },
+            shape = RoundedCornerShape(24.dp)
+        )
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -292,21 +333,58 @@ fun ItemDetailDialog(
                     // Action Button (Borrow)
                     Button(
                         onClick = {
-                            onBorrow()
-                            onDismiss()
+                            if (!isBorrowing) {
+                                isBorrowing = true
+                                scope.launch {
+                                    try {
+                                        val requesterId = currentUser?.uid ?: ""
+                                        val requesterName = authRepository.getUsername(requesterId)
+                                        val ownerName = ownerState?.username ?: "Owner"
+                                        
+                                        val borrowRequest = BorrowRequest(
+                                            communityId = item.communityId,
+                                            itemId = item.id,
+                                            itemName = item.name,
+                                            ownerId = item.owner,
+                                            ownerName = ownerName,
+                                            requesterId = requesterId,
+                                            requesterName = requesterName,
+                                            status = "pending",
+                                            requestDate = Timestamp.now(),
+                                            startDate = Timestamp(item.availability.start),
+                                            endDate = Timestamp(item.availability.end)
+                                        )
+                                        
+                                        borrowRepository.createBorrowRequest(borrowRequest)
+                                        successMessage = "Your request for \"${item.name}\" has been sent to $ownerName. They will be notified!"
+                                        showSuccessDialog = true
+                                        onBorrow()
+                                        // onDismiss() is called when SuccessDialog is confirmed
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    } finally {
+                                        isBorrowing = false
+                                    }
+                                }
+                            }
                         },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(24.dp)
                             .height(56.dp),
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Primary)
+                        colors = ButtonDefaults.buttonColors(containerColor = Primary),
+                        enabled = !isBorrowing
                     ) {
-                        Text(
-                            text = "Borrow Item",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        if (isBorrowing) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+                        } else {
+                            Text(
+                                text = "Borrow Item",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
